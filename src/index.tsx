@@ -18,7 +18,7 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Office Automation Hub - 事務自動化ツール</title>
+        <title>GitHub Actions AI Agent Hub - 自動化エージェントシステム</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -31,24 +31,24 @@ app.get('/', (c) => {
                 <div class="flex items-center justify-between h-16">
                     <div class="flex items-center">
                         <i class="fas fa-robot text-2xl mr-3"></i>
-                        <h1 class="text-xl font-bold">Office Automation Hub</h1>
+                        <h1 class="text-xl font-bold">AI Agent Hub</h1>
                     </div>
                     <div class="hidden md:block">
                         <div class="ml-10 flex items-baseline space-x-4">
                             <a href="#dashboard" class="nav-link px-3 py-2 rounded-md text-sm font-medium bg-blue-700">
                                 <i class="fas fa-tachometer-alt mr-2"></i>ダッシュボード
                             </a>
-                            <a href="#csv-tools" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
-                                <i class="fas fa-file-csv mr-2"></i>CSV処理
+                            <a href="#agent-control" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
+                                <i class="fas fa-robot mr-2"></i>エージェント制御
                             </a>
-                            <a href="#email-tools" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
-                                <i class="fas fa-envelope mr-2"></i>メール自動送信
+                            <a href="#task-monitor" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
+                                <i class="fas fa-tasks mr-2"></i>タスク監視
                             </a>
-                            <a href="#file-tools" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
-                                <i class="fas fa-folder mr-2"></i>ファイル管理
+                            <a href="#workflow-history" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
+                                <i class="fas fa-history mr-2"></i>実行履歴
                             </a>
-                            <a href="#report-tools" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
-                                <i class="fas fa-chart-bar mr-2"></i>レポート生成
+                            <a href="#results-viewer" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
+                                <i class="fas fa-eye mr-2"></i>結果閲覧
                             </a>
                         </div>
                     </div>
@@ -62,24 +62,24 @@ app.get('/', (c) => {
             <div id="dashboard" class="section">
                 <div class="mb-8">
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">
-                        <i class="fas fa-tachometer-alt text-blue-600 mr-3"></i>
-                        自動化ダッシュボード
+                        <i class="fas fa-robot text-blue-600 mr-3"></i>
+                        AIエージェントダッシュボード
                     </h2>
-                    <p class="text-gray-600">事務作業を効率化するためのツール一覧</p>
+                    <p class="text-gray-600">GitHub Actionsベースの自動化エージェントシステム</p>
                 </div>
 
-                <!-- Stats Cards -->
+                <!-- Agent Stats Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div class="bg-white overflow-hidden shadow rounded-lg">
                         <div class="p-5">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <i class="fas fa-file-csv text-indigo-600 text-2xl"></i>
+                                    <i class="fas fa-spider text-indigo-600 text-2xl"></i>
                                 </div>
                                 <div class="ml-5 w-0 flex-1">
                                     <dl>
-                                        <dt class="text-sm font-medium text-gray-500 truncate">処理済みCSVファイル</dt>
-                                        <dd class="text-lg font-medium text-gray-900" id="csv-processed-count">0</dd>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">スクレイピング実行数</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="scraping-count">0</dd>
                                     </dl>
                                 </div>
                             </div>
@@ -90,12 +90,12 @@ app.get('/', (c) => {
                         <div class="p-5">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <i class="fas fa-envelope text-green-600 text-2xl"></i>
+                                    <i class="fas fa-file-pdf text-green-600 text-2xl"></i>
                                 </div>
                                 <div class="ml-5 w-0 flex-1">
                                     <dl>
-                                        <dt class="text-sm font-medium text-gray-500 truncate">送信済みメール</dt>
-                                        <dd class="text-lg font-medium text-gray-900" id="email-sent-count">0</dd>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">PDF処理数</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="pdf-processed-count">0</dd>
                                     </dl>
                                 </div>
                             </div>
@@ -106,12 +106,12 @@ app.get('/', (c) => {
                         <div class="p-5">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <i class="fas fa-folder text-yellow-600 text-2xl"></i>
+                                    <i class="fas fa-presentation text-yellow-600 text-2xl"></i>
                                 </div>
                                 <div class="ml-5 w-0 flex-1">
                                     <dl>
-                                        <dt class="text-sm font-medium text-gray-500 truncate">整理済みファイル</dt>
-                                        <dd class="text-lg font-medium text-gray-900" id="files-organized-count">0</dd>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">スライド生成数</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="slides-generated-count">0</dd>
                                     </dl>
                                 </div>
                             </div>
@@ -122,12 +122,12 @@ app.get('/', (c) => {
                         <div class="p-5">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <i class="fas fa-chart-bar text-red-600 text-2xl"></i>
+                                    <i class="fas fa-robot text-red-600 text-2xl"></i>
                                 </div>
                                 <div class="ml-5 w-0 flex-1">
                                     <dl>
-                                        <dt class="text-sm font-medium text-gray-500 truncate">生成済みレポート</dt>
-                                        <dd class="text-lg font-medium text-gray-900" id="reports-generated-count">0</dd>
+                                        <dt class="text-sm font-medium text-gray-500 truncate">アクティブエージェント</dt>
+                                        <dd class="text-lg font-medium text-gray-900" id="active-agents-count">1</dd>
                                     </dl>
                                 </div>
                             </div>
