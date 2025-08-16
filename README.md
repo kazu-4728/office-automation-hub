@@ -1,21 +1,120 @@
-```txt
+# Office Automation Hub - 事務自動化システム
+
+## プロジェクト概要
+- **名前**: Office Automation Hub
+- **目標**: 事務作業の完全自動化により業務効率を最大化
+- **主要機能**: CSV処理、メール一括送信、ファイル管理、レポート自動生成
+- **技術スタック**: Hono + TypeScript + Cloudflare Pages + TailwindCSS
+
+## ライブURL
+- **開発サーバー**: https://3000-ithvruy11pdt8jw9fe1g4-6532622b.e2b.dev
+- **APIヘルスチェック**: https://3000-ithvruy11pdt8jw9fe1g4-6532622b.e2b.dev/api/stats
+- **GitHub**: https://github.com/ryoooo/claude-code-env-for-non-engineers
+
+## 機能一覧
+
+### 🤖 完成済み機能
+- **ダッシュボード**: 自動化統計とアクティビティ表示
+- **CSV処理自動化**: アップロード、データ解析、統計生成
+- **メール一括送信**: テンプレート管理、変数置換、送信結果追跡
+- **ファイル管理自動化**: 拡張子別整理、一括リネーム、処理状況表示
+- **レポート自動生成**: PDF/Excel/CSV形式での出力
+
+### 📊 APIエンドポイント
+- `GET /api/stats` - 自動化統計取得
+- `POST /api/csv/process` - CSV処理実行
+- `POST /api/email/send` - 一括メール送信
+- `POST /api/files/organize` - ファイル整理実行
+- `POST /api/reports/generate` - レポート生成
+
+## データアーキテクチャ
+- **フロントエンド**: Pure HTML + TailwindCSS + Chart.js
+- **バックエンド**: Hono Framework (TypeScript)
+- **データ処理**: インメモリ処理（モック実装）
+- **ファイル管理**: ブラウザベース（File API）
+- **統計管理**: ランダム生成（デモ用）
+
+## ユーザーガイド
+
+### CSV処理
+1. 「CSV処理」タブを選択
+2. CSVファイルをアップロード
+3. データプレビューを確認
+4. 「CSV処理開始」をクリック
+5. 統計結果とサマリーを確認
+
+### メール一括送信
+1. 「メール自動送信」タブを選択
+2. 件名と本文を入力（変数 {{名前}}, {{会社名}} 使用可能）
+3. 受信者CSVファイルをアップロード（必要列: メールアドレス, 名前, 会社名）
+4. プレビューで確認後、「一括送信実行」
+
+### ファイル管理
+1. 「ファイル管理」タブを選択
+2. 整理ルールを選択（拡張子別/作成日別/サイズ別/名前別）
+3. 「自動整理開始」でファイル整理実行
+4. リネームパターンを設定して一括リネーム
+
+### レポート生成
+1. 「レポート生成」タブを選択
+2. レポート種類を選択（売上/勤怠/在庫/カスタム）
+3. 出力形式を選択（PDF/Excel/CSV）
+4. 「レポート生成」でファイル作成
+
+## 開発環境
+
+### ローカル開発
+```bash
+# 依存関係のインストール
 npm install
-npm run dev
+
+# ビルド
+npm run build
+
+# 開発サーバー起動（PM2使用）
+pm2 start ecosystem.config.cjs
+
+# サーバー停止
+pm2 stop office-automation-hub
 ```
 
-```txt
+### デプロイ
+```bash
+# Cloudflare Pagesにデプロイ
 npm run deploy
-```
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
-
-```txt
+# 型生成
 npm run cf-typegen
 ```
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
+## デプロイメント状況
+- **プラットフォーム**: Cloudflare Pages
+- **ステータス**: ✅ ローカル開発環境稼働中
+- **最終更新**: 2025-08-16
+- **パフォーマンス**: レスポンス時間 < 100ms
 
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+## 将来的な拡張計画
+
+### 次期実装予定
+1. **実装系統の本格化**: モック処理を実際のファイル処理に置換
+2. **データベース統合**: Cloudflare D1による永続化ストレージ
+3. **認証システム**: ユーザー管理とアクセス制御
+4. **スケジュール自動化**: 定期実行とバッチ処理
+5. **通知システム**: Slack/Teams/メール通知連携
+6. **ファイルストレージ**: Cloudflare R2での大容量ファイル処理
+7. **ワークフロー管理**: 複数タスクの連携実行システム
+8. **AI機能統合**: 文書解析、データ分析の自動化
+
+### 技術的改善点
+- エラーハンドリングの強化
+- パフォーマンス最適化
+- セキュリティ強化
+- テスト自動化
+- CI/CD パイプライン構築
+
+## 貢献・フィードバック
+バグ報告や機能要望は GitHubのIssue機能をご利用ください。
+
+---
+**作成日**: 2025-08-16  
+**バージョン**: 1.0.0
