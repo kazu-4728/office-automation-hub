@@ -1,0 +1,30 @@
+name: 🚀 Unzip and Activate Workflows
+
+on:
+  push:
+    paths:
+      - 'github_workflows.zip'
+  workflow_dispatch:
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Unzip workflows
+        run: |
+          unzip -o github_workflows.zip
+          rm github_workflows.zip
+          
+      - name: Commit workflows
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/workflows/
+          git commit -m "🚀 Activate GitHub Actions workflows" || echo "No changes"
+          git push
