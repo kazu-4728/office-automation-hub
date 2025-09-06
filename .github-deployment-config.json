@@ -1,0 +1,32 @@
+{
+  "repo_owner": "kazu-4728",
+  "repo_name": "office-automation-hub",
+  "workflows": [
+    {
+      "name": "agent-main.yml",
+      "path": ".github/workflows/agent-main.yml",
+      "source": "workflows-ready/agent-main.yml",
+      "description": "Main AI Agent Controller"
+    },
+    {
+      "name": "task-scraping.yml",
+      "path": ".github/workflows/task-scraping.yml", 
+      "source": "workflows-ready/task-scraping.yml",
+      "description": "Web Scraping Engine"
+    },
+    {
+      "name": "task-pdf-ocr.yml",
+      "path": ".github/workflows/task-pdf-ocr.yml",
+      "source": "workflows-ready/task-pdf-ocr.yml",
+      "description": "PDF/OCR Processing Engine"
+    },
+    {
+      "name": "task-slide-gen.yml",
+      "path": ".github/workflows/task-slide-gen.yml",
+      "source": "workflows-ready/task-slide-gen.yml",
+      "description": "Slide Generation Engine"
+    }
+  ],
+  "deployment_method": "github_api",
+  "auto_deploy": true
+}
