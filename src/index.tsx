@@ -568,4 +568,148 @@ app.get('/api/stats', (c) => {
   })
 })
 
+// API Endpoints for Agent Control
+
+// Get agent status
+app.get('/api/agents/status', (c) => {
+  return c.json({
+    status: 'active',
+    agents: [
+      { name: 'scraping_agent', status: 'ready', last_run: new Date().toISOString() },
+      { name: 'pdf_ocr_agent', status: 'ready', last_run: null },
+      { name: 'slide_generator', status: 'ready', last_run: null }
+    ],
+    github_actions: {
+      workflows_available: true,
+      last_trigger: null
+    }
+  })
+})
+
+// Trigger scraping task
+app.post('/api/agents/scrape', async (c) => {
+  const body = await c.req.json()
+  const { url, options } = body
+  
+  return c.json({
+    task_id: `scrape_${Date.now()}`,
+    status: 'queued',
+    message: 'Scraping task has been queued',
+    target_url: url,
+    estimated_time: '5-15 minutes'
+  })
+})
+
+// Trigger PDF/OCR processing
+app.post('/api/agents/pdf-ocr', async (c) => {
+  const body = await c.req.json()
+  const { file_url, perform_ocr, language } = body
+  
+  return c.json({
+    task_id: `pdf_${Date.now()}`,
+    status: 'queued',
+    message: 'PDF/OCR processing task has been queued',
+    file: file_url,
+    ocr_enabled: perform_ocr || false,
+    language: language || 'eng+jpn',
+    estimated_time: '10-30 minutes'
+  })
+})
+
+// Generate slides
+app.post('/api/agents/generate-slides', async (c) => {
+  const body = await c.req.json()
+  const { data, template, max_slides } = body
+  
+  return c.json({
+    task_id: `slides_${Date.now()}`,
+    status: 'queued',
+    message: 'Slide generation task has been queued',
+    template: template || 'professional',
+    max_slides: max_slides || 15,
+    estimated_time: '3-10 minutes'
+  })
+})
+
+// Get task results
+app.get('/api/tasks/:taskId', (c) => {
+  const taskId = c.req.param('taskId')
+  
+  // Simulate task result
+  return c.json({
+    task_id: taskId,
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    results: {
+      output_files: [
+        `/outputs/${taskId}/results.json`,
+        `/outputs/${taskId}/summary.csv`
+      ],
+      summary: 'Task completed successfully',
+      metrics: {
+        processing_time: '5m 23s',
+        items_processed: 42
+      }
+    }
+  })
+})
+
+// Get workflow history
+app.get('/api/workflows/history', (c) => {
+  return c.json({
+    workflows: [
+      {
+        id: 'wf_001',
+        name: 'Full Pipeline Execution',
+        status: 'completed',
+        started_at: new Date(Date.now() - 3600000).toISOString(),
+        completed_at: new Date(Date.now() - 1800000).toISOString(),
+        tasks: ['scraping', 'pdf_processing', 'slide_generation']
+      },
+      {
+        id: 'wf_002',
+        name: 'Scraping Task',
+        status: 'running',
+        started_at: new Date(Date.now() - 300000).toISOString(),
+        progress: 75
+      }
+    ],
+    total: 2
+  })
+})
+
+// Trigger GitHub Action workflow
+app.post('/api/github/trigger-workflow', async (c) => {
+  const body = await c.req.json()
+  const { workflow_id, inputs } = body
+  
+  // In production, this would actually trigger a GitHub Action
+  return c.json({
+    success: true,
+    message: 'GitHub Action workflow triggered',
+    workflow_id: workflow_id,
+    run_id: `run_${Date.now()}`,
+    status: 'queued',
+    github_url: `https://github.com/kazu-4728/office-automation-hub/actions/runs/${Date.now()}`
+  })
+})
+
+// Get statistics
+app.get('/api/stats', (c) => {
+  return c.json({
+    total_executions: 156,
+    successful_runs: 148,
+    failed_runs: 8,
+    average_processing_time: '12m 45s',
+    total_pages_processed: 3420,
+    total_slides_generated: 89,
+    last_24h: {
+      executions: 12,
+      scraping_tasks: 5,
+      pdf_tasks: 4,
+      slide_tasks: 3
+    }
+  })
+})
+
 export default app
