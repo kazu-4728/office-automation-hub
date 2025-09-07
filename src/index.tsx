@@ -8,7 +8,7 @@ const app = new Hono()
 app.use('/api/*', cors())
 
 // Serve static files from public/static directory
-app.use('/static/*', serveStatic({ root: './public' }))
+app.use('/static/*', serveStatic({ root: './public', manifest: {} }))
 
 // Main application HTML
 app.get('/', (c) => {
@@ -429,14 +429,26 @@ app.post('/api/csv/process', async (c) => {
     }
 
     const text = await file.text()
-    const lines = text.split('\n').filter(line => line.trim())
-    const headers = lines[0].split(',').map(h => h.trim())
-    const rows = lines.slice(1).map(line => 
-      line.split(',').map(cell => cell.trim())
+    const lines = text.split('\n').filter((line: string) => line.trim())
+    const headers = lines[0].split(',').map((h: string) => h.trim())
+    const rows = lines.slice(1).map((line: string) =>
+      line.split(',').map((cell: string) => cell.trim())
     )
 
     // Generate basic statistics
-    const stats = {
+    interface CsvStats {
+      totalRows: number
+      totalColumns: number
+      headers: string[]
+      sampleData: string[][]
+      summary: Record<string, {
+        count: number
+        min: number
+        max: number
+        avg: number
+      }>
+    }
+    const stats: CsvStats = {
       totalRows: rows.length,
       totalColumns: headers.length,
       headers: headers,
@@ -445,15 +457,17 @@ app.post('/api/csv/process', async (c) => {
     }
 
     // Calculate column statistics for numeric columns
-    headers.forEach((header, index) => {
-      const values = rows.map(row => row[index]).filter(val => val && !isNaN(Number(val)))
+    headers.forEach((header: string, index: number) => {
+      const values = rows
+        .map((row: string[]) => row[index])
+        .filter((val: string | undefined) => val && !isNaN(Number(val)))
       if (values.length > 0) {
         const numbers = values.map(Number)
         stats.summary[header] = {
           count: numbers.length,
           min: Math.min(...numbers),
           max: Math.max(...numbers),
-          avg: numbers.reduce((a, b) => a + b, 0) / numbers.length
+          avg: numbers.reduce((a: number, b: number) => a + b, 0) / numbers.length
         }
       }
     })
@@ -465,24 +479,28 @@ app.post('/api/csv/process', async (c) => {
     })
 
   } catch (error) {
-    return c.json({ error: 'CSV処理中にエラーが発生しました: ' + error.message }, 500)
+    return c.json({ error: 'CSV処理中にエラーが発生しました: ' + (error as Error).message }, 500)
   }
 })
 
 // Email Sending API (Mock implementation)
 app.post('/api/email/send', async (c) => {
   try {
-    const { subject, body, recipients } = await c.req.json()
-    
+    const { subject, body, recipients } = await c.req.json() as {
+      subject: string
+      body: string
+      recipients: { email: string; name: string }[]
+    }
+
     // Mock email sending - in real implementation, integrate with email service
-    const results = recipients.map((recipient, index) => ({
+    const results = recipients.map((recipient: { email: string; name: string }, index: number) => ({
       email: recipient.email,
       name: recipient.name,
       status: Math.random() > 0.1 ? 'success' : 'failed', // 90% success rate
       sent_at: new Date().toISOString()
     }))
 
-    const successCount = results.filter(r => r.status === 'success').length
+    const successCount = results.filter((r: { status: string }) => r.status === 'success').length
     
     return c.json({
       success: true,
@@ -496,14 +514,14 @@ app.post('/api/email/send', async (c) => {
     })
 
   } catch (error) {
-    return c.json({ error: 'メール送信中にエラーが発生しました: ' + error.message }, 500)
+    return c.json({ error: 'メール送信中にエラーが発生しました: ' + (error as Error).message }, 500)
   }
 })
 
 // File Organization API (Mock implementation)
 app.post('/api/files/organize', async (c) => {
   try {
-    const { rule } = await c.req.json()
+    const { rule } = await c.req.json() as { rule: string }
     
     // Mock file organization
     const mockFiles = [
@@ -511,7 +529,7 @@ app.post('/api/files/organize', async (c) => {
       'document2.pdf', 'image2.png', 'presentation1.pptx'
     ]
     
-    const organized = mockFiles.map(file => ({
+    const organized = mockFiles.map((file: string) => ({
       original: file,
       newLocation: `${rule}/${file}`,
       status: 'moved'
@@ -528,14 +546,14 @@ app.post('/api/files/organize', async (c) => {
     })
 
   } catch (error) {
-    return c.json({ error: 'ファイル整理中にエラーが発生しました: ' + error.message }, 500)
+    return c.json({ error: 'ファイル整理中にエラーが発生しました: ' + (error as Error).message }, 500)
   }
 })
 
 // Report Generation API (Mock implementation)
 app.post('/api/reports/generate', async (c) => {
   try {
-    const { type, format } = await c.req.json()
+    const { type, format } = await c.req.json() as { type: string; format: string }
     
     // Mock report generation
     const reportData = {
@@ -553,7 +571,7 @@ app.post('/api/reports/generate', async (c) => {
     })
 
   } catch (error) {
-    return c.json({ error: 'レポート生成中にエラーが発生しました: ' + error.message }, 500)
+    return c.json({ error: 'レポート生成中にエラーが発生しました: ' + (error as Error).message }, 500)
   }
 })
 
