@@ -1,14 +1,18 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
+// Cloudflare injects the static content manifest globally at runtime
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - provided by Cloudflare Workers
+const manifest = globalThis.__STATIC_CONTENT_MANIFEST
 
 const app = new Hono()
 
 // Enable CORS for API endpoints
 app.use('/api/*', cors())
 
-// Serve static files from public/static directory
-app.use('/static/*', serveStatic({ root: './public' }))
+// Serve static files from public directory using Cloudflare manifest
+app.use('/static/*', serveStatic({ root: './public', manifest }))
 
 // Main application HTML
 app.get('/', (c) => {
