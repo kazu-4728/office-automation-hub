@@ -252,8 +252,10 @@ jobs:
         fi
 
     - name: 📤 Upload Results
+      if: ${{ hashFiles('outputs/**') != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: agent-results-${{ needs.agent-orchestrator.outputs.task-id }}
         path: outputs/
         retention-days: 30
+        if-no-files-found: ignore
