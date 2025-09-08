@@ -21,6 +21,12 @@ on:
         required: false
         type: string
         default: '1'
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: scraping-${{ inputs.task-id }}
+  cancel-in-progress: false
 
 jobs:
   scraping-engine:
@@ -49,9 +55,9 @@ jobs:
         pip install requests beautifulsoup4 selenium pandas numpy lxml
         pip install playwright asyncio aiohttp cssselect
         pip install scrapy fake-useragent
-        
+
         # Install browser for Playwright
-        playwright install chromium
+        npx playwright install --with-deps chromium
 
     - name: 📁 Create Output Directory
       run: |
@@ -346,12 +352,18 @@ jobs:
                 print(f"Summary: {json.dumps(summary, indent=2)}")
                 
                 # Set GitHub Action outputs
-                print(f"::set-output name=status::success")
-                print(f"::set-output name=output_file::{output_file}")
-                print(f"::set-output name=data_summary::{json.dumps(summary)}")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=success\n')
+                        f.write(f'output_file={output_file}\n')
+                        f.write(f'data_summary={json.dumps(summary)}\n')
             else:
                 print("Scraping failed - no data extracted")
-                print(f"::set-output name=status::failed")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=failed\n')
         
         if __name__ == "__main__":
             asyncio.run(main())
@@ -387,15 +399,3 @@ jobs:
         name: scraping-results-${{ inputs.task-id }}
         path: outputs/scraping/${{ inputs.task-id }}/
         retention-days: 30
-
-    - name: 💾 Commit Results to Repository
-      if: steps.scrape-execution.outputs.status == 'success'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        if [ -n "$(git status --porcelain)" ]; then
-          git add outputs/
-          git commit -m "🕷️ Add scraping results for task ${{ inputs.task-id }}"
-          git push
-        fi
