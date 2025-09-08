@@ -56,8 +56,8 @@ jobs:
         pip install playwright asyncio aiohttp cssselect
         pip install scrapy fake-useragent
 
-        # Install browser for Playwright
-        npx playwright install --with-deps chromium
+        # Install browser for Playwright using Python CLI
+        python -m playwright install --with-deps chromium
 
     - name: 📁 Create Output Directory
       run: |
