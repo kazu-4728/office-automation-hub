@@ -26,6 +26,12 @@ on:
         required: false
         type: string
         default: 'modern'
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: slide-gen-${{ inputs.task-id }}
+  cancel-in-progress: false
 
 jobs:
   slide-generation-engine:
@@ -481,13 +487,19 @@ jobs:
                 print(f"Summary: {json.dumps(summary, indent=2)}")
                 
                 # Set GitHub Action outputs
-                print(f"::set-output name=status::success")
-                print(f"::set-output name=output_file::{output_file}")
-                print(f"::set-output name=slide_summary::{json.dumps(summary)}")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=success\n')
+                        f.write(f'output_file={output_file}\n')
+                        f.write(f'slide_summary={json.dumps(summary)}\n')
                 
             except Exception as e:
                 print(f"Slide generation failed: {e}")
-                print(f"::set-output name=status::failed")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=failed\n')
         
         if __name__ == "__main__":
             main()
@@ -523,15 +535,3 @@ jobs:
         name: slide-generation-results-${{ inputs.task-id }}
         path: outputs/slides/${{ inputs.task-id }}/
         retention-days: 30
-
-    - name: 💾 Commit Results to Repository
-      if: steps.slide-generation.outputs.status == 'success'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        if [ -n "$(git status --porcelain)" ]; then
-          git add outputs/
-          git commit -m "🎨 Add slide generation results for task ${{ inputs.task-id }}"
-          git push
-        fi

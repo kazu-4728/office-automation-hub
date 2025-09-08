@@ -53,6 +53,13 @@ on:
         type: string
         default: '{}'
 
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: agent-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   AGENT_VERSION: "2.0.0"
   PYTHON_VERSION: "3.11"
@@ -63,11 +70,11 @@ jobs:
     name: 🎯 Agent Task Orchestrator
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    
+
     outputs:
       task-id: ${{ steps.generate-task-id.outputs.task_id }}
       task-type: ${{ steps.parse-task.outputs.task_type }}
-      should-proceed: ${{ steps.parse-task.outputs.should_proceed }}
+      should_proceed: ${{ steps.parse-task.outputs.should_proceed }}
     
     steps:
     - name: 📥 Checkout Repository
@@ -128,8 +135,8 @@ jobs:
           echo "Scheduled maintenance task"
         fi
         
-        echo "task_type=$TASK_TYPE" >> $GITHUB_OUTPUT
-        echo "should_proceed=$SHOULD_PROCEED" >> $GITHUB_OUTPUT
+        echo "task_type=$TASK_TYPE" >> "$GITHUB_OUTPUT"
+        echo "should_proceed=$SHOULD_PROCEED" >> "$GITHUB_OUTPUT"
         echo "Final Task Type: $TASK_TYPE, Proceed: $SHOULD_PROCEED"
 
     - name: 🚀 Setup Agent Environment
@@ -182,7 +189,7 @@ jobs:
   execute-scraping-task:
     name: 🕷️ Execute Scraping Task
     needs: agent-orchestrator
-    if: needs.agent-orchestrator.outputs.should-proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'scraping' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
+    if: needs.agent-orchestrator.outputs.should_proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'scraping' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
     uses: ./.github/workflows/task-scraping.yml
     with:
       task-id: ${{ needs.agent-orchestrator.outputs.task-id }}
@@ -192,7 +199,7 @@ jobs:
   execute-pdf-ocr-task:
     name: 📄 Execute PDF/OCR Task
     needs: [agent-orchestrator, execute-scraping-task]
-    if: always() && needs.agent-orchestrator.outputs.should-proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'pdf-ocr' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
+    if: always() && needs.agent-orchestrator.outputs.should_proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'pdf-ocr' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
     uses: ./.github/workflows/task-pdf-ocr.yml
     with:
       task-id: ${{ needs.agent-orchestrator.outputs.task-id }}
@@ -202,7 +209,7 @@ jobs:
   execute-slide-generation-task:
     name: 🎨 Execute Slide Generation Task
     needs: [agent-orchestrator, execute-pdf-ocr-task]
-    if: always() && needs.agent-orchestrator.outputs.should-proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'slide-generation' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
+    if: always() && needs.agent-orchestrator.outputs.should_proceed == 'true' && (needs.agent-orchestrator.outputs.task-type == 'slide-generation' || needs.agent-orchestrator.outputs.task-type == 'full-pipeline')
     uses: ./.github/workflows/task-slide-gen.yml
     with:
       task-id: ${{ needs.agent-orchestrator.outputs.task-id }}
@@ -212,7 +219,7 @@ jobs:
   finalize-task:
     name: 🎯 Finalize Task
     needs: [agent-orchestrator, execute-scraping-task, execute-pdf-ocr-task, execute-slide-generation-task]
-    if: always() && needs.agent-orchestrator.outputs.should-proceed == 'true'
+    if: always() && needs.agent-orchestrator.outputs.should_proceed == 'true'
     runs-on: ubuntu-latest
     
     steps:

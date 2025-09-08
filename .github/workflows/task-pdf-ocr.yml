@@ -25,6 +25,12 @@ on:
         required: false
         type: string
         default: 'json'
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: pdf-ocr-${{ inputs.task-id }}
+  cancel-in-progress: false
 
 jobs:
   pdf-processing-engine:
@@ -56,7 +62,9 @@ jobs:
         sudo apt-get install -y imagemagick
         
         # Configure ImageMagick policy for PDF processing
-        sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
+        if [ -f /etc/ImageMagick-6/policy.xml ]; then
+          sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
+        fi
         
         # Python dependencies
         pip install --upgrade pip
@@ -470,12 +478,18 @@ jobs:
                 print(f"Summary: {json.dumps(summary, indent=2)}")
                 
                 # Set GitHub Action outputs
-                print(f"::set-output name=status::success")
-                print(f"::set-output name=output_file::{output_file}")
-                print(f"::set-output name=text_summary::{json.dumps(summary)}")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=success\n')
+                        f.write(f'output_file={output_file}\n')
+                        f.write(f'text_summary={json.dumps(summary)}\n')
             else:
                 print("PDF processing failed - no documents processed")
-                print(f"::set-output name=status::failed")
+                gh_out = os.getenv('GITHUB_OUTPUT')
+                if gh_out:
+                    with open(gh_out, 'a') as f:
+                        f.write('status=failed\n')
         
         if __name__ == "__main__":
             main()
@@ -511,15 +525,3 @@ jobs:
         name: pdf-processing-results-${{ inputs.task-id }}
         path: outputs/pdf-processing/${{ inputs.task-id }}/
         retention-days: 30
-
-    - name: 💾 Commit Results to Repository
-      if: steps.pdf-processing.outputs.status == 'success'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        if [ -n "$(git status --porcelain)" ]; then
-          git add outputs/
-          git commit -m "📄 Add PDF processing results for task ${{ inputs.task-id }}"
-          git push
-        fi
