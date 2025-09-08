@@ -1,0 +1,525 @@
+name: 📄 PDF Processing & OCR Engine
+
+on:
+  workflow_call:
+    inputs:
+      task-id:
+        required: true
+        type: string
+      input-source:
+        required: false
+        type: string
+        default: 'manual'
+      pdf-url:
+        required: false
+        type: string
+      processing-mode:
+        required: false
+        type: string
+        default: 'full'
+      ocr-language:
+        required: false
+        type: string
+        default: 'jpn+eng'
+      output-format:
+        required: false
+        type: string
+        default: 'json'
+
+jobs:
+  pdf-processing-engine:
+    name: 📄 PDF & OCR Processing Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    outputs:
+      status: ${{ steps.pdf-processing.outputs.status }}
+      output-file: ${{ steps.pdf-processing.outputs.output_file }}
+      text-summary: ${{ steps.pdf-processing.outputs.text_summary }}
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: 🛠️ Install PDF/OCR Dependencies
+      run: |
+        # System dependencies
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn tesseract-ocr-eng
+        sudo apt-get install -y poppler-utils ghostscript
+        sudo apt-get install -y imagemagick
+        
+        # Configure ImageMagick policy for PDF processing
+        sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
+        
+        # Python dependencies
+        pip install --upgrade pip
+        pip install PyPDF2 pymupdf pdf2image pytesseract
+        pip install pillow opencv-python numpy pandas
+        pip install pdfplumber tabula-py camelot-py[cv]
+        pip install reportlab weasyprint
+        pip install requests beautifulsoup4 lxml
+
+    - name: 📁 Create Output Directories
+      run: |
+        mkdir -p outputs/pdf-processing/${{ inputs.task-id }}
+        mkdir -p outputs/pdf-processing/${{ inputs.task-id }}/images
+        mkdir -p outputs/pdf-processing/${{ inputs.task-id }}/text
+        mkdir -p outputs/pdf-processing/${{ inputs.task-id }}/tables
+        mkdir -p outputs/raw-data/${{ inputs.task-id }}
+
+    - name: 📄 Execute PDF Processing & OCR
+      id: pdf-processing
+      run: |
+        cat > pdf_processor.py << 'EOF'
+        import os
+        import json
+        import sys
+        import requests
+        import fitz  # PyMuPDF
+        import pandas as pd
+        import numpy as np
+        from PIL import Image
+        import pytesseract
+        from pdf2image import convert_from_path
+        import pdfplumber
+        import cv2
+        from datetime import datetime
+        import re
+        from urllib.parse import urlparse
+        import base64
+        
+        class PDFProcessor:
+            def __init__(self, task_id, ocr_language='jpn+eng'):
+                self.task_id = task_id
+                self.ocr_language = ocr_language
+                self.output_dir = f"outputs/pdf-processing/{task_id}"
+                self.processed_data = {
+                    'task_id': task_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'documents': [],
+                    'summary': {}
+                }
+                
+            def download_pdf(self, url):
+                """Download PDF from URL"""
+                try:
+                    response = requests.get(url, timeout=30)
+                    response.raise_for_status()
+                    
+                    filename = os.path.basename(urlparse(url).path) or 'downloaded.pdf'
+                    if not filename.endswith('.pdf'):
+                        filename += '.pdf'
+                    
+                    filepath = os.path.join(self.output_dir, filename)
+                    
+                    with open(filepath, 'wb') as f:
+                        f.write(response.content)
+                    
+                    return filepath
+                except Exception as e:
+                    print(f"Error downloading PDF: {e}")
+                    return None
+            
+            def extract_text_pymupdf(self, pdf_path):
+                """Extract text using PyMuPDF"""
+                text_data = []
+                
+                try:
+                    doc = fitz.open(pdf_path)
+                    
+                    for page_num in range(len(doc)):
+                        page = doc.load_page(page_num)
+                        text = page.get_text()
+                        
+                        # Extract images from page
+                        image_list = page.get_images()
+                        images = []
+                        
+                        for img_index, img in enumerate(image_list):
+                            xref = img[0]
+                            pix = fitz.Pixmap(doc, xref)
+                            
+                            if pix.n - pix.alpha < 4:  # GRAY or RGB
+                                img_filename = f"page_{page_num+1}_img_{img_index+1}.png"
+                                img_path = os.path.join(self.output_dir, 'images', img_filename)
+                                pix.save(img_path)
+                                images.append({
+                                    'filename': img_filename,
+                                    'path': img_path,
+                                    'width': pix.width,
+                                    'height': pix.height
+                                })
+                            
+                            pix = None
+                        
+                        text_data.append({
+                            'page': page_num + 1,
+                            'text': text,
+                            'images': images,
+                            'char_count': len(text)
+                        })
+                    
+                    doc.close()
+                    return text_data
+                    
+                except Exception as e:
+                    print(f"Error extracting text with PyMuPDF: {e}")
+                    return []
+            
+            def extract_text_pdfplumber(self, pdf_path):
+                """Extract text and tables using pdfplumber"""
+                structured_data = []
+                
+                try:
+                    with pdfplumber.open(pdf_path) as pdf:
+                        for page_num, page in enumerate(pdf.pages):
+                            page_data = {
+                                'page': page_num + 1,
+                                'text': page.extract_text() or '',
+                                'tables': [],
+                                'metadata': {
+                                    'width': page.width,
+                                    'height': page.height
+                                }
+                            }
+                            
+                            # Extract tables
+                            tables = page.extract_tables()
+                            for table_index, table in enumerate(tables):
+                                if table:
+                                    table_data = {
+                                        'table_index': table_index + 1,
+                                        'data': table,
+                                        'rows': len(table),
+                                        'columns': len(table[0]) if table else 0
+                                    }
+                                    page_data['tables'].append(table_data)
+                                    
+                                    # Save table as CSV
+                                    if table:
+                                        df = pd.DataFrame(table[1:], columns=table[0])
+                                        csv_filename = f"page_{page_num+1}_table_{table_index+1}.csv"
+                                        csv_path = os.path.join(self.output_dir, 'tables', csv_filename)
+                                        df.to_csv(csv_path, index=False)
+                                        table_data['csv_file'] = csv_filename
+                            
+                            structured_data.append(page_data)
+                    
+                    return structured_data
+                    
+                except Exception as e:
+                    print(f"Error extracting structured data: {e}")
+                    return []
+            
+            def perform_ocr(self, pdf_path):
+                """Perform OCR on PDF pages"""
+                ocr_results = []
+                
+                try:
+                    # Convert PDF to images
+                    pages = convert_from_path(pdf_path, dpi=300)
+                    
+                    for page_num, page_image in enumerate(pages):
+                        # Save original image
+                        img_filename = f"page_{page_num+1}_original.png"
+                        img_path = os.path.join(self.output_dir, 'images', img_filename)
+                        page_image.save(img_path)
+                        
+                        # Convert PIL Image to OpenCV format
+                        open_cv_image = np.array(page_image)
+                        open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
+                        
+                        # Image preprocessing for better OCR
+                        gray = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+                        
+                        # Apply noise reduction
+                        denoised = cv2.medianBlur(gray, 5)
+                        
+                        # Apply thresholding
+                        thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+                        
+                        # Save processed image
+                        processed_filename = f"page_{page_num+1}_processed.png"
+                        processed_path = os.path.join(self.output_dir, 'images', processed_filename)
+                        cv2.imwrite(processed_path, thresh)
+                        
+                        # Perform OCR with different configurations
+                        ocr_configs = [
+                            '--oem 3 --psm 6',  # Default
+                            '--oem 3 --psm 4',  # Single column text
+                            '--oem 3 --psm 1',  # Automatic page segmentation with OSD
+                        ]
+                        
+                        best_result = ""
+                        best_confidence = 0
+                        
+                        for config in ocr_configs:
+                            try:
+                                # OCR with confidence scores
+                                data = pytesseract.image_to_data(
+                                    thresh, 
+                                    lang=self.ocr_language, 
+                                    config=config,
+                                    output_type=pytesseract.Output.DICT
+                                )
+                                
+                                # Calculate average confidence
+                                confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
+                                avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+                                
+                                # Extract text
+                                text = pytesseract.image_to_string(
+                                    thresh, 
+                                    lang=self.ocr_language, 
+                                    config=config
+                                )
+                                
+                                if avg_confidence > best_confidence and len(text.strip()) > len(best_result.strip()):
+                                    best_result = text
+                                    best_confidence = avg_confidence
+                                    
+                            except Exception as e:
+                                print(f"OCR config {config} failed: {e}")
+                                continue
+                        
+                        ocr_results.append({
+                            'page': page_num + 1,
+                            'text': best_result,
+                            'confidence': best_confidence,
+                            'original_image': img_filename,
+                            'processed_image': processed_filename,
+                            'char_count': len(best_result)
+                        })
+                        
+                        # Save individual page text
+                        text_filename = f"page_{page_num+1}_ocr.txt"
+                        text_path = os.path.join(self.output_dir, 'text', text_filename)
+                        with open(text_path, 'w', encoding='utf-8') as f:
+                            f.write(best_result)
+                    
+                    return ocr_results
+                    
+                except Exception as e:
+                    print(f"Error performing OCR: {e}")
+                    return []
+            
+            def process_pdf(self, pdf_path, mode='full'):
+                """Main PDF processing function"""
+                print(f"Processing PDF: {pdf_path}")
+                print(f"Processing mode: {mode}")
+                
+                document_data = {
+                    'filename': os.path.basename(pdf_path),
+                    'filepath': pdf_path,
+                    'processing_mode': mode,
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                # Extract basic text with PyMuPDF
+                print("Extracting text with PyMuPDF...")
+                pymupdf_data = self.extract_text_pymupdf(pdf_path)
+                document_data['pymupdf_extraction'] = pymupdf_data
+                
+                # Extract structured data with pdfplumber
+                if mode in ['full', 'structured']:
+                    print("Extracting structured data with pdfplumber...")
+                    structured_data = self.extract_text_pdfplumber(pdf_path)
+                    document_data['structured_extraction'] = structured_data
+                
+                # Perform OCR
+                if mode in ['full', 'ocr']:
+                    print("Performing OCR...")
+                    ocr_data = self.perform_ocr(pdf_path)
+                    document_data['ocr_extraction'] = ocr_data
+                
+                # Combine all text for analysis
+                all_text = ""
+                
+                # Combine PyMuPDF text
+                for page_data in pymupdf_data:
+                    all_text += page_data['text'] + "\n"
+                
+                # Add OCR text if available
+                if 'ocr_extraction' in document_data:
+                    for page_data in document_data['ocr_extraction']:
+                        all_text += page_data['text'] + "\n"
+                
+                # Text analysis
+                document_data['analysis'] = {
+                    'total_characters': len(all_text),
+                    'total_words': len(all_text.split()),
+                    'total_lines': len(all_text.splitlines()),
+                    'page_count': len(pymupdf_data),
+                    'has_images': any(page['images'] for page in pymupdf_data),
+                    'has_tables': 'structured_extraction' in document_data and any(
+                        page['tables'] for page in document_data['structured_extraction']
+                    )
+                }
+                
+                # Save combined text
+                combined_text_path = os.path.join(self.output_dir, 'text', 'combined_text.txt')
+                with open(combined_text_path, 'w', encoding='utf-8') as f:
+                    f.write(all_text)
+                
+                document_data['combined_text_file'] = 'combined_text.txt'
+                
+                return document_data
+            
+            def find_pdfs_in_scraping_data(self):
+                """Find PDF links in scraping results"""
+                pdf_urls = []
+                
+                try:
+                    scraping_file = f"outputs/scraping/{self.task_id}/detailed_data.json"
+                    if os.path.exists(scraping_file):
+                        with open(scraping_file, 'r', encoding='utf-8') as f:
+                            scraping_data = json.load(f)
+                        
+                        for page_data in scraping_data:
+                            for link in page_data.get('content', {}).get('links', []):
+                                if link['url'].lower().endswith('.pdf'):
+                                    pdf_urls.append(link['url'])
+                
+                except Exception as e:
+                    print(f"Error finding PDFs in scraping data: {e}")
+                
+                return pdf_urls
+            
+            def run_processing(self, pdf_url=None, input_source='manual', mode='full'):
+                """Main processing execution"""
+                print(f"Starting PDF processing task: {self.task_id}")
+                
+                pdf_files = []
+                
+                # Determine PDF sources
+                if pdf_url:
+                    print(f"Processing PDF from URL: {pdf_url}")
+                    downloaded_path = self.download_pdf(pdf_url)
+                    if downloaded_path:
+                        pdf_files.append(downloaded_path)
+                
+                elif input_source != 'manual':
+                    print("Looking for PDFs in scraping results...")
+                    pdf_urls = self.find_pdfs_in_scraping_data()
+                    
+                    for url in pdf_urls[:5]:  # Limit to 5 PDFs
+                        downloaded_path = self.download_pdf(url)
+                        if downloaded_path:
+                            pdf_files.append(downloaded_path)
+                
+                # Process each PDF
+                for pdf_file in pdf_files:
+                    try:
+                        document_data = self.process_pdf(pdf_file, mode)
+                        self.processed_data['documents'].append(document_data)
+                    except Exception as e:
+                        print(f"Error processing {pdf_file}: {e}")
+                
+                # Generate summary
+                self.processed_data['summary'] = {
+                    'total_documents': len(self.processed_data['documents']),
+                    'total_pages': sum(doc['analysis']['page_count'] for doc in self.processed_data['documents']),
+                    'total_characters': sum(doc['analysis']['total_characters'] for doc in self.processed_data['documents']),
+                    'documents_with_images': sum(1 for doc in self.processed_data['documents'] if doc['analysis']['has_images']),
+                    'documents_with_tables': sum(1 for doc in self.processed_data['documents'] if doc['analysis']['has_tables']),
+                    'processing_completed': datetime.now().isoformat()
+                }
+                
+                return self.processed_data
+            
+            def save_results(self, output_format='json'):
+                """Save processing results"""
+                base_path = f"outputs/pdf-processing/{self.task_id}"
+                
+                if output_format == 'json':
+                    output_file = f"{base_path}/processing_results.json"
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        json.dump(self.processed_data, f, ensure_ascii=False, indent=2)
+                
+                # Always save summary
+                summary_file = f"{base_path}/summary.json"
+                with open(summary_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.processed_data['summary'], f, indent=2)
+                
+                return output_file, self.processed_data['summary']
+        
+        # Execute PDF processing
+        def main():
+            processor = PDFProcessor(
+                task_id="${{ inputs.task-id }}",
+                ocr_language="${{ inputs.ocr-language }}"
+            )
+            
+            results = processor.run_processing(
+                pdf_url="${{ inputs.pdf-url }}" if "${{ inputs.pdf-url }}" else None,
+                input_source="${{ inputs.input-source }}",
+                mode="${{ inputs.processing-mode }}"
+            )
+            
+            if results['documents']:
+                output_file, summary = processor.save_results("${{ inputs.output-format }}")
+                print(f"PDF processing completed successfully!")
+                print(f"Output file: {output_file}")
+                print(f"Summary: {json.dumps(summary, indent=2)}")
+                
+                # Set GitHub Action outputs
+                print(f"::set-output name=status::success")
+                print(f"::set-output name=output_file::{output_file}")
+                print(f"::set-output name=text_summary::{json.dumps(summary)}")
+            else:
+                print("PDF processing failed - no documents processed")
+                print(f"::set-output name=status::failed")
+        
+        if __name__ == "__main__":
+            main()
+        EOF
+        
+        python pdf_processor.py
+
+    - name: 📊 Generate PDF Processing Report
+      run: |
+        echo "## 📄 PDF Processing Report" >> $GITHUB_STEP_SUMMARY
+        echo "- **Task ID**: ${{ inputs.task-id }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Input Source**: ${{ inputs.input-source }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Processing Mode**: ${{ inputs.processing-mode }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **OCR Language**: ${{ inputs.ocr-language }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ steps.pdf-processing.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "outputs/pdf-processing/${{ inputs.task-id }}/summary.json" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Processing Results:" >> $GITHUB_STEP_SUMMARY
+          cat outputs/pdf-processing/${{ inputs.task-id }}/summary.json | jq -r '
+            "- **Documents Processed**: " + (.total_documents | tostring) + "\n" +
+            "- **Total Pages**: " + (.total_pages | tostring) + "\n" +
+            "- **Total Characters**: " + (.total_characters | tostring) + "\n" +
+            "- **Documents with Images**: " + (.documents_with_images | tostring) + "\n" +
+            "- **Documents with Tables**: " + (.documents_with_tables | tostring)
+          ' >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: 📤 Upload PDF Processing Results
+      uses: actions/upload-artifact@v4
+      if: steps.pdf-processing.outputs.status == 'success'
+      with:
+        name: pdf-processing-results-${{ inputs.task-id }}
+        path: outputs/pdf-processing/${{ inputs.task-id }}/
+        retention-days: 30
+
+    - name: 💾 Commit Results to Repository
+      if: steps.pdf-processing.outputs.status == 'success'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [ -n "$(git status --porcelain)" ]; then
+          git add outputs/
+          git commit -m "📄 Add PDF processing results for task ${{ inputs.task-id }}"
+          git push
+        fi
