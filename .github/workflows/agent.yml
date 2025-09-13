@@ -14,7 +14,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: agent-${{ github.ref }}
+  group: agent-preflight-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

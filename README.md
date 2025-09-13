@@ -10,6 +10,9 @@ GitHub Actions 上で常駐する AI エージェント群を用いて、スク�
 - **多様なトリガー**: Issue、PR、Webhook、スケジュール、手動実行
 
 ## 使い方
+プロジェクトは次の3通りの方法で実行できます。
+**Issue**, **Actions**, **API** のいずれかを選び、タスクをキックします。
+はじめての方はまず Actions からの実行を試すのがおすすめです。
 
 ### Issue から実行
 ```
@@ -25,7 +28,9 @@ GitHub Actions 上で常駐する AI エージェント群を用いて、スク�
 ### Actions から実行
 1. GitHub の Actions タブを開く  
 2. 「🤖 AI Agent Main Controller」を選択  
-3. 「Run workflow」をクリックし必要なパラメータを設定して実行  
+3. 右側の「Run workflow」をクリック  
+4. フォームが開いたら必要に応じてパラメータを入力し、再度「Run workflow」で実行  
+   - 例: `task_type` に `scraping`、`target_url` に取得したい URL を記入
 
 ### API から実行
 ```bash
@@ -56,8 +61,11 @@ curl -X POST \
 3. テスト: `npm test`
 
 ### agent ワークフローの使い方
-- `.github/workflows/agent.yml` が毎時実行され、OpenAI のキーが存在するか事前にチェックします。
-- `workflow_dispatch` で `run_mode` を指定し `housekeeping-only` と `full` を切り替えられます。
+- `.github/workflows/agent.yml` は毎時自動実行され、OpenAI のシークレットが存在するかを事前にチェックします。  
+- 手動実行する場合は Actions から `agent` を選択し、`Run workflow` をクリックします。  
+  - `run_mode` に `housekeeping-only` を選ぶとシークレット不要の掃除処理のみを行います。  
+  - `run_mode` を `full`（既定値）のまま実行すると、シークレットが確認できた場合に本処理が走ります。  
+- 実行結果は Actions のジョブログから確認できます。
 
 ## 出力
 ```
