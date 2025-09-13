@@ -1,0 +1,90 @@
+name: agent
+on:
+  schedule:
+    - cron: "0 * * * *"        # 例: 毎正時。既存があればそちらを優先
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "housekeeping-only / full"
+        required: false
+        default: "full"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: agent-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- 前検査: OpenAIシークレットがある時だけ本処理を許可 ---
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      ready:   ${{ steps.chk.outputs.ready }}
+      missing: ${{ steps.chk.outputs.missing }}
+    steps:
+      - id: chk
+        shell: bash
+        env:
+          # フォールバック候補（どれか1つ入っていればOK）
+          OPENAI_A: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_B: ${{ secrets.OPENAI_API_TOKEN }}
+          OPENAI_C: ${{ secrets.OPENAI_KEY }}
+        run: |
+          pick() { [ -n "$1" ] && echo "$1" && return 0 || return 1; }
+          OPENAI="$(pick "$OPENAI_A" || pick "$OPENAI_B" || pick "$OPENAI_C" || true)"
+
+          if [ -z "$OPENAI" ]; then
+            echo "ready=false" >> $GITHUB_OUTPUT
+            echo "missing=OPENAI_API_KEY(or TOKEN/KEY)" >> $GITHUB_OUTPUT
+            echo "⏭️ Missing: OpenAI secret"
+          else
+            echo "ready=true" >> $GITHUB_OUTPUT
+            echo "✅ OpenAI secret present."
+          fi
+
+  # --- 鍵が無い時 or 明示的にhousekeeping要求時 ---
+  housekeeping:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'false' || github.event.inputs.run_mode == 'housekeeping-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🧹 Run non-secret tasks
+        shell: bash
+        run: |
+          echo "housekeeping-only (no secrets)"
+          # ここに README整備 / 重複・不要ファイル削除 / md-lint 等を配置（鍵不要のみ）
+
+  # --- 本処理: 鍵がある時だけ動かす。秘密はマスクして環境変数へ ---
+  main:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true' && github.event.inputs.run_mode != 'housekeeping-only'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve OpenAI secret safely
+        id: resolve
+        shell: bash
+        env:
+          OPENAI_A: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_B: ${{ secrets.OPENAI_API_TOKEN }}
+          OPENAI_C: ${{ secrets.OPENAI_KEY }}
+        run: |
+          set -euo pipefail
+          pick() { [ -n "$1" ] && echo "$1" && return 0 || return 1; }
+          OPENAI="$(pick "$OPENAI_A" || pick "$OPENAI_B" || pick "$OPENAI_C" || true)"
+          if [ -z "$OPENAI" ]; then echo "missing OpenAI secret"; exit 1; fi
+          echo "::add-mask::$OPENAI"
+          printf 'OPENAI_API_KEY=%s\n' "$OPENAI" >> "$GITHUB_ENV"
+
+      - name: 🚀 Run tasks that require OpenAI
+        shell: bash
+        run: |
+          # 以降は $OPENAI_API_KEY を利用（絶対にechoしない）
+          echo "full run started"
+          # 実処理をここへ
+
