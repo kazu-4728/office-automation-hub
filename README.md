@@ -40,16 +40,24 @@ curl -X POST \
       "target_url": "https://example.com"
     }
   }'
-```
-
 ## ワークフロー構成
 ```
 .github/workflows/
 ├── agent-main.yml      # オーケストレーター
+├── agent.yml           # OpenAIキー確認・定期実行
 ├── task-scraping.yml   # スクレイピング
 ├── task-pdf-ocr.yml    # PDF/OCR
 └── task-slide-gen.yml  # スライド生成
 ```
+
+## 開発とテスト
+1. 依存のインストール: `npm install`
+2. ビルド: `npm run build`
+3. テスト: `npm test`
+
+### agent ワークフローの使い方
+- `.github/workflows/agent.yml` が毎時実行され、OpenAI のキーが存在するか事前にチェックします。
+- `workflow_dispatch` で `run_mode` を指定し `housekeeping-only` と `full` を切り替えられます。
 
 ## 出力
 ```
@@ -66,4 +74,7 @@ outputs/
 ## サポート
 - [Issues](https://github.com/kazu-4728/office-automation-hub/issues)
 - [Discussions](https://github.com/kazu-4728/office-automation-hub/discussions)
+
+## ライセンス
+MIT License. 詳細は [LICENSE](./LICENSE) を参照してください。
 
