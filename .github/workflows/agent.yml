@@ -1,7 +1,7 @@
 name: agent
 on:
   schedule:
-    - cron: "0 * * * *"        # 例: 毎正時。既存があればそちらを優先
+    - cron: "0 22 * * *"  # JST 07:00（UTC 前日22:00）
   workflow_dispatch:
     inputs:
       run_mode:
