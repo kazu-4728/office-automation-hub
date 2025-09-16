@@ -360,9 +360,10 @@ def main():
     print(f"\nResults saved to: {results_file}")
     
     # Set output for GitHub Actions
-    print(f"::set-output name=pipeline_id::{results['pipeline_id']}")
-    print(f"::set-output name=results_file::{results_file}")
-    print(f"::set-output name=status::{results['status']}")
+    with open(os.environ['GITHUB_OUTPUT'], 'a') as output_file:
+        output_file.write(f"pipeline_id={results['pipeline_id']}\n")
+        output_file.write(f"results_file={results_file}\n")
+        output_file.write(f"status={results['status']}\n")
     
     # Exit with appropriate code
     sys.exit(0 if results['status'] == 'completed' else 1)
