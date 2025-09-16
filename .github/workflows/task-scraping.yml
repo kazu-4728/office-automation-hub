@@ -1,6 +1,7 @@
+---
 name: 🕷️ Scraping & Data Extraction Engine
 
-on:
+"on":
   workflow_call:
     inputs:
       task-id:
@@ -69,12 +70,12 @@ jobs:
     name: 🌐 Web Scraping Engine
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     outputs:
       status: ${{ steps.scrape-execution.outputs.status }}
       output-file: ${{ steps.scrape-execution.outputs.output_file }}
       data-summary: ${{ steps.scrape-execution.outputs.data_summary }}
-    
+
     steps:
     - name: 📥 Checkout Repository
       uses: actions/checkout@v4
@@ -116,7 +117,7 @@ jobs:
         import os
         import sys
         from datetime import datetime
-        
+
         class SmartScraper:
             def __init__(self, task_id, target_url, mode='smart', depth=1):
                 self.task_id = task_id
@@ -129,23 +130,23 @@ jobs:
                 })
                 self.scraped_data = []
                 self.links_found = []
-                
+
             def extract_text_content(self, soup):
                 """Extract clean text content from BeautifulSoup object"""
                 # Remove script and style elements
                 for script in soup(["script", "style"]):
                     script.extract()
-                
+
                 # Extract text
                 text = soup.get_text()
-                
+
                 # Clean up text
                 lines = (line.strip() for line in text.splitlines())
                 chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
                 text = ' '.join(chunk for chunk in chunks if chunk)
-                
+
                 return text
-            
+
             def extract_structured_data(self, soup, url):
                 """Extract structured data from webpage"""
                 data = {
@@ -155,24 +156,24 @@ jobs:
                     'content': {},
                     'metadata': {}
                 }
-                
+
                 # Extract headings
                 headings = []
                 for i in range(1, 7):
                     headings.extend([h.get_text().strip() for h in soup.find_all(f'h{i}')])
                 data['content']['headings'] = headings
-                
+
                 # Extract paragraphs
                 paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
                 data['content']['paragraphs'] = paragraphs
-                
+
                 # Extract lists
                 lists = []
                 for ul in soup.find_all(['ul', 'ol']):
                     items = [li.get_text().strip() for li in ul.find_all('li')]
                     lists.extend(items)
                 data['content']['lists'] = lists
-                
+
                 # Extract tables
                 tables = []
                 for table in soup.find_all('table'):
@@ -183,7 +184,7 @@ jobs:
                     if table_data:
                         tables.append(table_data)
                 data['content']['tables'] = tables
-                
+
                 # Extract links
                 links = []
                 for a in soup.find_all('a', href=True):
@@ -192,7 +193,7 @@ jobs:
                     if link_text and link_url.startswith('http'):
                         links.append({'url': link_url, 'text': link_text})
                 data['content']['links'] = links[:50]  # Limit to 50 links
-                
+
                 # Extract images
                 images = []
                 for img in soup.find_all('img', src=True):
@@ -200,34 +201,34 @@ jobs:
                     img_alt = img.get('alt', '')
                     images.append({'url': img_url, 'alt': img_alt})
                 data['content']['images'] = images[:20]  # Limit to 20 images
-                
+
                 # Extract metadata
                 for meta in soup.find_all('meta'):
                     if meta.get('name'):
                         data['metadata'][meta['name']] = meta.get('content', '')
                     elif meta.get('property'):
                         data['metadata'][meta['property']] = meta.get('content', '')
-                
+
                 # Text content
                 data['content']['full_text'] = self.extract_text_content(soup)
-                
+
                 return data
-            
+
             async def scrape_with_playwright(self, url):
                 """Scrape JavaScript-heavy sites with Playwright"""
                 async with async_playwright() as p:
                     browser = await p.chromium.launch()
                     page = await browser.new_page()
-                    
+
                     try:
                         await page.goto(url, wait_until='networkidle')
                         content = await page.content()
                         soup = BeautifulSoup(content, 'html.parser')
                         data = self.extract_structured_data(soup, url)
-                        
+
                         # Extract additional JavaScript-generated content
                         js_data = {}
-                        
+
                         # Try to extract JSON-LD structured data
                         try:
                             json_ld = await page.evaluate('''
@@ -240,69 +241,69 @@ jobs:
                                 js_data['json_ld'] = json_ld
                         except:
                             pass
-                        
+
                         # Extract dynamic content
                         try:
                             dynamic_text = await page.evaluate('() => document.body.innerText')
                             js_data['dynamic_text'] = dynamic_text[:5000]  # Limit text length
                         except:
                             pass
-                        
+
                         data['javascript_content'] = js_data
-                        
+
                     except Exception as e:
                         print(f"Error scraping {url} with Playwright: {e}")
                         return None
                     finally:
                         await browser.close()
-                
+
                 return data
-            
+
             def scrape_basic(self, url):
                 """Basic scraping with requests"""
                 try:
                     response = self.session.get(url, timeout=30)
                     response.raise_for_status()
-                    
+
                     soup = BeautifulSoup(response.content, 'html.parser')
                     return self.extract_structured_data(soup, url)
-                    
+
                 except Exception as e:
                     print(f"Error scraping {url}: {e}")
                     return None
-            
+
             async def run_scraping(self):
                 """Main scraping execution"""
                 print(f"Starting scraping task: {self.task_id}")
                 print(f"Target URL: {self.target_url}")
                 print(f"Mode: {self.mode}, Depth: {self.depth}")
-                
+
                 urls_to_scrape = [self.target_url]
                 scraped_urls = set()
-                
+
                 for current_depth in range(self.depth):
                     if not urls_to_scrape:
                         break
-                        
+
                     current_urls = urls_to_scrape.copy()
                     urls_to_scrape = []
-                    
+
                     for url in current_urls:
                         if url in scraped_urls:
                             continue
-                            
+
                         print(f"Scraping (depth {current_depth + 1}): {url}")
-                        
+
                         # Choose scraping method based on mode
                         if self.mode == 'playwright' or (self.mode == 'smart' and 'spa' in url.lower()):
                             data = await self.scrape_with_playwright(url)
                         else:
                             data = self.scrape_basic(url)
-                        
+
                         if data:
                             self.scraped_data.append(data)
                             scraped_urls.add(url)
-                            
+
                             # Extract links for next depth level
                             if current_depth < self.depth - 1:
                                 for link in data['content']['links']:
@@ -311,24 +312,24 @@ jobs:
                                     if urlparse(link_url).netloc == urlparse(self.target_url).netloc:
                                         if link_url not in scraped_urls:
                                             urls_to_scrape.append(link_url)
-                
+
                 return self.scraped_data
-            
+
             def save_results(self, output_format='json'):
                 """Save scraping results"""
                 if not self.scraped_data:
                     return None
-                
+
                 base_path = f"outputs/scraping/{self.task_id}"
-                
+
                 if output_format == 'json':
                     output_file = f"{base_path}/scraped_data.json"
                     with open(output_file, 'w', encoding='utf-8') as f:
                         json.dump(self.scraped_data, f, ensure_ascii=False, indent=2)
-                
+
                 elif output_format == 'csv':
                     output_file = f"{base_path}/scraped_data.csv"
-                    
+
                     # Flatten data for CSV
                     flattened_data = []
                     for item in self.scraped_data:
@@ -344,15 +345,15 @@ jobs:
                             'full_text_preview': item['content']['full_text'][:500]
                         }
                         flattened_data.append(flat_item)
-                    
+
                     df = pd.DataFrame(flattened_data)
                     df.to_csv(output_file, index=False)
-                
+
                 # Always save detailed JSON for processing
                 detailed_file = f"{base_path}/detailed_data.json"
                 with open(detailed_file, 'w', encoding='utf-8') as f:
                     json.dump(self.scraped_data, f, ensure_ascii=False, indent=2)
-                
+
                 # Generate summary
                 summary = {
                     'task_id': self.task_id,
@@ -363,13 +364,13 @@ jobs:
                     'total_images': sum(len(item['content']['images']) for item in self.scraped_data),
                     'completion_time': datetime.now().isoformat()
                 }
-                
+
                 summary_file = f"{base_path}/summary.json"
                 with open(summary_file, 'w') as f:
                     json.dump(summary, f, indent=2)
-                
+
                 return output_file, summary
-        
+
         # Execute scraping
         async def main():
             scraper = SmartScraper(
@@ -378,15 +379,15 @@ jobs:
                 mode="${{ inputs.scraping-mode }}",
                 depth="${{ inputs.depth-limit }}"
             )
-            
+
             results = await scraper.run_scraping()
-            
+
             if results:
                 output_file, summary = scraper.save_results("${{ inputs.output-format }}")
                 print(f"Scraping completed successfully!")
                 print(f"Output file: {output_file}")
                 print(f"Summary: {json.dumps(summary, indent=2)}")
-                
+
                 # Set GitHub Action outputs
                 gh_out = os.getenv('GITHUB_OUTPUT')
                 if gh_out:
@@ -400,11 +401,11 @@ jobs:
                 if gh_out:
                     with open(gh_out, 'a') as f:
                         f.write('status=failed\n')
-        
+
         if __name__ == "__main__":
             asyncio.run(main())
         EOF
-        
+
         python scraper.py
 
     - name: 📊 Generate Scraping Report
@@ -415,7 +416,7 @@ jobs:
         echo "- **Mode**: ${{ inputs.scraping-mode }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Depth**: ${{ inputs.depth-limit }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Status**: ${{ steps.scrape-execution.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-        
+
         if [ -f "outputs/scraping/${{ inputs.task-id }}/summary.json" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Results Summary:" >> $GITHUB_STEP_SUMMARY
