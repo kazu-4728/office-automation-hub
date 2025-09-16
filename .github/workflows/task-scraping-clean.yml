@@ -1,4 +1,4 @@
-name: 🕷️ Scraping & Data Extraction Engine
+name: "Scraping and Data Extraction Engine"
 
 on:
   workflow_call:
@@ -21,42 +21,6 @@ on:
         required: false
         type: string
         default: '1'
-  workflow_dispatch:
-    inputs:
-      task-id:
-        description: 'Task ID for the scraping job'
-        required: true
-        type: string
-      target-url:
-        description: 'URL to scrape'
-        required: true
-        type: string
-      scraping-mode:
-        description: 'Scraping mode'
-        required: false
-        type: choice
-        default: 'smart'
-        options:
-        - smart
-        - basic
-        - playwright
-      output-format:
-        description: 'Output format'
-        required: false
-        type: choice
-        default: 'json'
-        options:
-        - json
-        - csv
-      depth-limit:
-        description: 'Depth limit for scraping'
-        required: false
-        type: choice
-        default: '1'
-        options:
-        - '1'
-        - '2'
-        - '3'
   workflow_dispatch:
     inputs:
       task-id:
