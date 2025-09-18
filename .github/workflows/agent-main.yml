@@ -16,7 +16,7 @@ name: 🤖 AI Agent Main Controller
 
   # Schedule for periodic tasks
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '0 22 * * *'  # Daily at 07:00 JST (22:00 UTC)
 
   # Manual trigger
   workflow_dispatch:
