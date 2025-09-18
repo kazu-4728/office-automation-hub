@@ -23,7 +23,7 @@ The cron expression `"0 22 * * *"` breaks down as follows:
 | 2nd | `22` | Hour (0-23) - Execute at hour 22 (10 PM) |
 | 3rd | `*` | Day of month (1-31) - Any day |
 | 4th | `*` | Month (1-12) - Any month |
-| 5th | `*` | Day of week (0-7) - Any day of the week |
+| 5th | `*` | Day of week (0-6 or SUN-SAT) - Any day of the week (0/SUN = Sunday) |
 
 ## Time Zone Considerations
 
@@ -60,11 +60,11 @@ For reference, here are other common cron patterns:
 # Twice daily (6 AM and 6 PM JST)
 - cron: "0 21,9 * * *"
 
-# Weekdays only at 7 AM JST
-- cron: "0 22 * * 1-5"
+# Weekdays only at 7 AM JST (adjusted: runs at 22:00 UTC on Sun-Thu, which is 07:00 JST Mon-Fri)
+- cron: "0 22 * * 0-4"
 
-# Every Monday at 7 AM JST
-- cron: "0 22 * * 1"
+# Every Monday at 7 AM JST (adjusted: runs at 22:00 UTC on Sun, which is 07:00 JST Mon)
+- cron: "0 22 * * 0"
 ```
 
 ## Troubleshooting
