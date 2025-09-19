@@ -1,0 +1,207 @@
+# GitHub Copilot Coding Agent Configuration
+# This file configures the Copilot Coding Agent and MCP (Model Context Protocol) integration
+# for the office-automation-hub repository
+
+# Enable/disable Copilot Coding Agent features
+enabled: true
+
+# Repository metadata
+repository:
+  name: "office-automation-hub"
+  description: "GitHub Actions AI Agent Hub for office automation tasks"
+  primary_language: "typescript"
+  secondary_languages: ["python", "yaml", "markdown"]
+  
+# Onboarding guides for new contributors
+onboarding:
+  short_guides:
+    - title: "Quick Start Guide"
+      description: "Get started with the office automation workflows"
+      path: "README.md"
+      sections: ["使い方", "ワークフロー構成"]
+    
+    - title: "Agent Development"
+      description: "Learn how to create new automation agents"
+      path: "agents/"
+      example_files: ["scraping_agent.py", "pdf_ocr_agent.py", "orchestrator.py"]
+    
+    - title: "Workflow Configuration"
+      description: "Understanding GitHub Actions workflows"
+      path: ".github/workflows/"
+      key_files: ["agent-main.yml", "task-scraping.yml", "task-pdf-ocr.yml"]
+    
+    - title: "Environment Setup"
+      description: "Configure secrets and environment variables"
+      path: ".env.example"
+      required_secrets: ["OPENAI_API_KEY", "SMTP_SERVER", "SMTP_USERNAME", "SMTP_PASSWORD"]
+
+# Recommended prompts for common development tasks
+recommended_prompts:
+  - category: "Feature Development"
+    prompts:
+      - "Create a new automation agent for [task_type] following the existing agent pattern"
+      - "Add error handling and status reporting to the [agent_name] workflow"
+      - "Implement batch processing support for [workflow_name]"
+      - "Add email notifications for [task_type] completion"
+  
+  - category: "Workflow Management"
+    prompts:
+      - "Create a new GitHub Actions workflow for [task_description]"
+      - "Add input validation to the [workflow_name] workflow"
+      - "Implement retry logic for failed [task_type] operations"
+      - "Add scheduled execution support for [agent_name]"
+  
+  - category: "API Integration"
+    prompts:
+      - "Add API endpoint for triggering [task_type] via webhook"
+      - "Implement authentication for external API calls"
+      - "Create status monitoring endpoint for workflow runs"
+      - "Add pagination support to [api_endpoint]"
+  
+  - category: "Testing & Validation"
+    prompts:
+      - "Add unit tests for [agent_name] functionality"
+      - "Create integration tests for [workflow_name]"
+      - "Add mock services for testing external dependencies"
+      - "Implement test data generation for [data_type]"
+  
+  - category: "Documentation"
+    prompts:
+      - "Update README.md with [new_feature] documentation"
+      - "Create API documentation for [endpoint_name]"
+      - "Add troubleshooting guide for [common_issue]"
+      - "Document secrets configuration for [feature_name]"
+
+# MCP (Model Context Protocol) configuration
+mcp:
+  # Enable MCP integration (requires MCP server setup)
+  enabled: false
+  
+  # MCP server endpoint configuration
+  # DO NOT hardcode actual endpoints - use GitHub Secrets in workflows
+  endpoint: "${MCP_ENDPOINT}"  # Set as GitHub Secret: MCP_ENDPOINT
+  
+  # Authentication configuration
+  auth:
+    type: "bearer_token"
+    token: "${MCP_API_KEY}"    # Set as GitHub Secret: MCP_API_KEY
+  
+  # Connection settings
+  connection:
+    timeout: 30
+    retry_attempts: 3
+    retry_delay: 5
+  
+  # Context sharing configuration
+  context:
+    # Include repository structure in MCP context
+    include_file_tree: true
+    
+    # Maximum file size to include in context (in KB)
+    max_file_size: 100
+    
+    # File patterns to include in context
+    include_patterns:
+      - "*.md"
+      - "*.yml"
+      - "*.yaml"
+      - "*.json"
+      - "*.py"
+      - "*.ts"
+      - "*.tsx"
+    
+    # File patterns to exclude from context
+    exclude_patterns:
+      - "node_modules/**"
+      - "dist/**"
+      - "build/**"
+      - "*.log"
+      - ".git/**"
+      - "package-lock.json"
+  
+  # Available tools for MCP integration
+  tools:
+    - name: "workflow_trigger"
+      description: "Trigger GitHub Actions workflows"
+      endpoint: "/api/trigger-workflow"
+      
+    - name: "agent_status"
+      description: "Check agent execution status"
+      endpoint: "/api/agent-status"
+      
+    - name: "file_processor"
+      description: "Process files through automation pipeline"
+      endpoint: "/api/process-file"
+      
+    - name: "data_extractor"
+      description: "Extract data from various sources"
+      endpoint: "/api/extract-data"
+
+# Code analysis preferences
+code_analysis:
+  # Primary patterns to recognize in this repository
+  patterns:
+    - "github_actions_workflows"
+    - "python_agents"
+    - "typescript_api"
+    - "automation_pipelines"
+  
+  # Framework-specific configurations
+  frameworks:
+    github_actions:
+      workflow_patterns: [".github/workflows/*.yml"]
+      secret_patterns: ["${{ secrets.* }}"]
+      
+    python:
+      agent_patterns: ["agents/*.py"]
+      dependency_file: "requirements.txt"
+      
+    typescript:
+      api_patterns: ["src/*.tsx", "src/*.ts"]
+      dependency_file: "package.json"
+      build_config: "vite.config.ts"
+
+# Security and best practices
+security:
+  # Patterns to watch for security issues
+  sensitive_patterns:
+    - "hardcoded_credentials"
+    - "exposed_api_keys"
+    - "insecure_http_requests"
+  
+  # Best practices to enforce
+  best_practices:
+    - "use_github_secrets"
+    - "input_validation"
+    - "error_handling"
+    - "documentation_updates"
+
+# Development environment
+development:
+  # Local development setup
+  local_setup:
+    npm_install: true
+    python_requirements: true
+    env_file_required: true
+  
+  # Testing configuration
+  testing:
+    test_command: "npm test"
+    build_command: "npm run build"
+    lint_commands: []  # Add linting commands if available
+  
+  # Common development tasks
+  common_tasks:
+    - "Add new automation agent"
+    - "Modify existing workflow"
+    - "Update API endpoints"
+    - "Add error handling"
+    - "Create documentation"
+    - "Configure secrets"
+
+# Version and compatibility
+metadata:
+  config_version: "1.0.0"
+  copilot_version: ">=1.0.0"
+  last_updated: "2024-01-01"
+  maintainer: "kazu-4728"
