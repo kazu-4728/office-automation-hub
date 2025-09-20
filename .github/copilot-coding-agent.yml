@@ -75,7 +75,7 @@ recommended_prompts:
 # MCP (Model Context Protocol) configuration
 mcp:
   # Enable MCP integration (requires MCP server setup)
-  enabled: false
+  enabled: true
   
   # MCP server endpoint configuration
   # DO NOT hardcode actual endpoints - use GitHub Secrets in workflows
