@@ -10,7 +10,7 @@ GitHub Actions AI Agent Hub is a TypeScript/React web application with Python AI
 Run these commands in exact sequence for a working development environment:
 
 - **Install Node.js dependencies**: `npm install` -- takes 3 seconds. NEVER CANCEL.
-- **Install Python dependencies**: `pip3 install -r requirements.txt` -- takes 35 seconds. NEVER CANCEL. Set timeout to 60+ seconds.
+- **Install Python dependencies**: `pip3 install -r requirements.txt` -- takes 35 seconds. NEVER CANCEL. Set timeout to 90+ seconds.
 - **Build web application**: `npm run build` -- takes 2 seconds. NEVER CANCEL.
 - **Run tests**: `npm test` -- takes 2 seconds, rebuilds automatically. NEVER CANCEL.
 
