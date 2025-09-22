@@ -359,12 +359,16 @@ def main():
     
     print(f"\nResults saved to: {results_file}")
     
-    # Set output for GitHub Actions
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as output_file:
-        output_file.write(f"pipeline_id={results['pipeline_id']}\n")
-        output_file.write(f"results_file={results_file}\n")
-        output_file.write(f"status={results['status']}\n")
-    
+    # Set output for GitHub Actions when available
+    github_output = os.environ.get('GITHUB_OUTPUT')
+    if github_output:
+        with open(github_output, 'a') as output_file:
+            output_file.write(f"pipeline_id={results['pipeline_id']}\n")
+            output_file.write(f"results_file={results_file}\n")
+            output_file.write(f"status={results['status']}\n")
+    else:
+        print('GITHUB_OUTPUT is not set. Skipping GitHub Actions output export.')
+
     # Exit with appropriate code
     sys.exit(0 if results['status'] == 'completed' else 1)
 

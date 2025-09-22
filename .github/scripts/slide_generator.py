@@ -44,6 +44,8 @@ class SlideGenerator:
         
         # Content data
         self.content_data = []
+        self.pdf_documents = []
+        self.pdf_summary = {}
         self.processed_text = ""
         self.slide_data = []
         
@@ -77,29 +79,104 @@ class SlideGenerator:
                 print(f"Loaded scraping data: {len(scraping_data)} pages")
             except Exception as e:
                 print(f"Error loading scraping data: {e}")
-        
+
+        # Load PDF processing data
+        pdf_results_file = f"outputs/pdf-processing/{self.task_id}/processing_results.json"
+        if os.path.exists(pdf_results_file):
+            try:
+                with open(pdf_results_file, 'r', encoding='utf-8') as f:
+                    pdf_data = json.load(f)
+
+                if isinstance(pdf_data, dict) and isinstance(pdf_data.get('summary'), dict):
+                    self.pdf_summary = pdf_data['summary']
+
+                if isinstance(pdf_data, list):
+                    pdf_entries = pdf_data
+                elif isinstance(pdf_data, dict):
+                    if isinstance(pdf_data.get('results'), list):
+                        pdf_entries = pdf_data['results']
+                    elif isinstance(pdf_data.get('documents'), list):
+                        pdf_entries = pdf_data['documents']
+                    else:
+                        pdf_entries = [pdf_data]
+                else:
+                    pdf_entries = []
+
+                loaded_documents = 0
+                for entry in pdf_entries:
+                    if not isinstance(entry, dict):
+                        continue
+
+                    status = entry.get('status', 'unknown')
+                    if status not in ('completed', 'success', 'succeeded'):
+                        # Skip documents that did not finish successfully but keep metadata for reference
+                        print(f"Skipping PDF entry due to status '{status}': {entry.get('file', 'unknown')}")
+                        continue
+
+                    metadata = entry.get('metadata') or {}
+                    filename = metadata.get('filename') or os.path.basename(entry.get('file', '')) or 'PDF Document'
+
+                    text_segments = []
+                    for key in ('text', 'ocr_text'):
+                        value = entry.get(key)
+                        if isinstance(value, str) and value.strip():
+                            text_segments.append(value.strip())
+
+                    combined_text = "\n".join(text_segments)
+                    if combined_text:
+                        self.processed_text += combined_text + "\n"
+
+                    images = entry.get('images') if isinstance(entry.get('images'), list) else []
+                    tables = entry.get('tables') if isinstance(entry.get('tables'), list) else []
+
+                    document_info = {
+                        'type': 'pdf_document',
+                        'title': filename,
+                        'file': entry.get('file', ''),
+                        'metadata': metadata,
+                        'page_count': entry.get('page_count'),
+                        'tables': tables,
+                        'images': images,
+                        'text': combined_text,
+                        'text_excerpt': combined_text[:500] if combined_text else '',
+                        'status': status
+                    }
+
+                    self.content_data.append(document_info)
+                    self.pdf_documents.append(document_info)
+                    loaded_documents += 1
+
+                if loaded_documents:
+                    sources_loaded.append('pdf_processing')
+                    print(f"Loaded PDF processing data: {loaded_documents} documents")
+            except Exception as e:
+                print(f"Error loading PDF processing data: {e}")
+        else:
+            if data_source not in ('manual', None):
+                print(f"No PDF processing results found at {pdf_results_file}")
+
         return sources_loaded
-    
+
     def analyze_content(self, max_slides=10):
         """Analyze content and create slide structure"""
         print(f"Analyzing content for {max_slides} slides...")
-        
+
         # Basic content analysis
         words = self.processed_text.split()
-        
+
         # Extract key topics (simple keyword extraction)
         word_freq = {}
         for word in words:
             word_clean = re.sub(r'[^\w]', '', word.lower())
             if len(word_clean) > 3:  # Skip short words
                 word_freq[word_clean] = word_freq.get(word_clean, 0) + 1
-        
+
         # Get top keywords
         top_keywords = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:20]
-        
+
         # Generate slide structure
         slides = []
-        
+
         # Title slide
         slides.append({
             'type': 'title',
@@ -107,7 +184,7 @@ class SlideGenerator:
             'subtitle': f'Task ID: {self.task_id}',
             'content': []
         })
-        
+
         # Overview slide
         slides.append({
             'type': 'overview',
@@ -118,7 +195,102 @@ class SlideGenerator:
                 f"主要キーワード数: {len(top_keywords)}" if self.language == 'ja' else f"Key keywords: {len(top_keywords)}"
             ]
         })
-        
+
+        pdf_docs = self.pdf_documents if hasattr(self, 'pdf_documents') else []
+
+        if pdf_docs:
+            total_pdf_chars = sum(len(doc.get('text', '') or '') for doc in pdf_docs)
+            total_pages = sum(doc.get('page_count') or 0 for doc in pdf_docs)
+
+            pdf_overview_line = (
+                f"PDFドキュメント数: {len(pdf_docs)} / 総ページ数: {total_pages}" if self.language == 'ja'
+                else f"PDF documents: {len(pdf_docs)} / Total pages: {total_pages}"
+            )
+            slides[1]['content'].append(pdf_overview_line)
+
+            def count_images(image_entries):
+                if not isinstance(image_entries, list):
+                    return 0
+                total = 0
+                for item in image_entries:
+                    if isinstance(item, dict):
+                        if isinstance(item.get('count'), int):
+                            total += item['count']
+                        elif 'image_index' in item:
+                            total += 1
+                return total
+
+            total_tables = sum(len(doc.get('tables') or []) for doc in pdf_docs)
+            total_images = sum(count_images(doc.get('images')) for doc in pdf_docs)
+
+            slides.append({
+                'type': 'content',
+                'title': 'PDF分析ハイライト' if self.language == 'ja' else 'PDF Analysis Highlights',
+                'content': [
+                    f"処理したPDF: {len(pdf_docs)}件" if self.language == 'ja' else f"Processed PDFs: {len(pdf_docs)}",
+                    f"総ページ数: {total_pages}" if self.language == 'ja' else f"Total pages: {total_pages}",
+                    f"抽出されたテキスト文字数: {total_pdf_chars:,}" if self.language == 'ja' else f"Extracted text characters: {total_pdf_chars:,}",
+                    f"抽出されたテーブル数: {total_tables}" if self.language == 'ja' else f"Extracted tables: {total_tables}",
+                    f"検出された画像数: {total_images}" if self.language == 'ja' else f"Detected images: {total_images}"
+                ]
+            })
+
+            if self.pdf_summary:
+                summary_slide_content = []
+                for key, value in self.pdf_summary.items():
+                    summary_slide_content.append(f"{key}: {value}")
+
+                if summary_slide_content:
+                    slides.append({
+                        'type': 'content',
+                        'title': 'PDFサマリー' if self.language == 'ja' else 'PDF Summary',
+                        'content': summary_slide_content
+                    })
+
+            remaining_slots = max_slides - len(slides)
+            if remaining_slots > 0:
+                for document in pdf_docs[:remaining_slots]:
+                    doc_content = []
+                    metadata = document.get('metadata') or {}
+
+                    if metadata.get('filename'):
+                        doc_content.append(
+                            f"ファイル名: {metadata['filename']}" if self.language == 'ja' else f"Filename: {metadata['filename']}"
+                        )
+
+                    if metadata.get('size_bytes'):
+                        size_bytes = metadata['size_bytes']
+                        doc_content.append(
+                            f"ファイルサイズ: {size_bytes:,} バイト" if self.language == 'ja' else f"File size: {size_bytes:,} bytes"
+                        )
+
+                    page_count = document.get('page_count')
+                    if page_count:
+                        doc_content.append(
+                            f"ページ数: {page_count}" if self.language == 'ja' else f"Pages: {page_count}"
+                        )
+
+                    tables = document.get('tables') or []
+                    if tables:
+                        doc_content.append(
+                            f"テーブル検出数: {len(tables)}" if self.language == 'ja' else f"Tables detected: {len(tables)}"
+                        )
+
+                    excerpt = document.get('text_excerpt')
+                    if excerpt:
+                        doc_content.append(textwrap.shorten(excerpt, width=180, placeholder='...'))
+
+                    if not doc_content:
+                        continue
+
+                    slides.append({
+                        'type': 'content',
+                        'title': document.get('title') or (
+                            'PDFドキュメント' if self.language == 'ja' else 'PDF Document'
+                        ),
+                        'content': doc_content
+                    })
+
         self.slide_data = slides[:max_slides]
         return self.slide_data
     
