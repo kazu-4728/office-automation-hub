@@ -168,7 +168,7 @@ npm run dev                   # Start dev server
 python3 agents/orchestrator.py status  # Test agents
 
 # Full validation
-SCRAPING_URLS="https://example.com" python3 agents/orchestrator.py full
+SCRAPING_URLS="http://localhost:8000" python3 agents/orchestrator.py full
 # Should complete with "Pipeline Complete" message and create outputs/
 ```
 
