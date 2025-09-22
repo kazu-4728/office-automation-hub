@@ -93,6 +93,8 @@ jobs:
 
     - name: 🔍 Parse Task Request
       id: parse-task
+      env:
+        ISSUE_TITLE: ${{ github.event.issue.title }}
       run: |
         echo "Parsing task request..."
 
@@ -108,7 +110,6 @@ jobs:
 
         elif [ "${{ github.event_name }}" = "issues" ]; then
           # Parse issue title and body for tasks
-          ISSUE_TITLE="${{ github.event.issue.title }}"
           echo "Issue trigger: $ISSUE_TITLE"
 
           if [[ "$ISSUE_TITLE" == *"[SCRAPE]"* ]]; then
