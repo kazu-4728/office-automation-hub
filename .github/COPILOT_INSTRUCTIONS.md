@@ -71,6 +71,7 @@ Modify the agent-main.yml workflow to support batch processing:
 
 Before submitting changes:
 
+- [ ] **Git Remote Check**: Run `./scripts/ensure_git_remote.sh` to make sure the `origin` remote points to this repository before pushing changes (especially in Copilot Chat sessions).
 - [ ] **Environment Variables**: Use `.env.example` as reference and ensure all new secrets are documented
 - [ ] **GitHub Secrets**: No hardcoded credentials - use `${{ secrets.SECRET_NAME }}` pattern
 - [ ] **Workflow Testing**: Test workflow changes using workflow_dispatch before PR
@@ -137,6 +138,16 @@ A: Use GitHub Secrets for credentials, avoid logging sensitive data, and ensure 
 
 ### Q: Why are my workflow runs failing with "missing secrets"?
 A: The `agent.yml` workflow includes preflight checks for required secrets. Ensure OPENAI_API_KEY is configured, or use `run_mode: housekeeping-only` for non-AI tasks.
+
+## Git Remote Setup for Copilot
+
+Copilot Chat/Coding Agent sessions may start without a configured git remote. To avoid push failures when creating pull requests:
+
+1. Run `./scripts/ensure_git_remote.sh` after opening a session. The script will add or update the `origin` remote to `https://github.com/kazu-4728/office-automation-hub.git`.
+2. Confirm the remote is set with `git remote -v`.
+3. Proceed with the usual commit and push flow.
+
+Running the script is idempotent, so it is safe to execute multiple times in the same session.
 
 ## Contact and Ownership
 
