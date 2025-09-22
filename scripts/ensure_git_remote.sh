@@ -4,7 +4,6 @@ set -euo pipefail
 EXPECTED_REMOTE="https://github.com/kazu-4728/office-automation-hub.git"
 REMOTE_NAME="origin"
 
-current_url=""
 if current_url=$(git remote get-url "${REMOTE_NAME}" 2>/dev/null); then
   if [[ "${current_url}" == "${EXPECTED_REMOTE}" ]]; then
     echo "${REMOTE_NAME} remote is already set to ${EXPECTED_REMOTE}" >&2
