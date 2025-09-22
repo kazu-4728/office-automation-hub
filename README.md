@@ -84,6 +84,18 @@ outputs/
 └── slides/{task-id}/presentation_{task-id}.pptx
 ```
 
+**出力ディレクトリについて:**
+- `outputs/` ディレクトリは実行時に自動生成されるため、`.gitignore` に含まれています
+- 出力ファイルを生成するには、以下のコマンドを実行してください:
+  ```bash
+  # エージェントのステータス確認（outputs/pipelines/ に結果を生成）
+  python3 agents/orchestrator.py status
+  
+  # 完全なパイプライン実行（全ての出力ディレクトリに結果を生成）
+  SCRAPING_URLS="http://localhost:8000" python3 agents/orchestrator.py full
+  ```
+- 生成された出力ファイルは一時的なものであり、通常はリポジトリにコミットする必要はありません
+
 ## セキュリティ
 - 認証情報は GitHub Secrets で管理
 - 実行ログや成果物は必要に応じて削除
