@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
+import { CodexService } from './services/codex'
 
 const app = new Hono()
 
@@ -49,6 +50,9 @@ app.get('/', (c) => {
                             </a>
                             <a href="#results-viewer" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
                                 <i class="fas fa-eye mr-2"></i>結果閲覧
+                            </a>
+                            <a href="#codex-tools" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-500">
+                                <i class="fas fa-code mr-2"></i>Codex AI
                             </a>
                         </div>
                     </div>
@@ -150,6 +154,9 @@ app.get('/', (c) => {
                         </button>
                         <button onclick="showSection('report-tools')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md text-sm font-medium transition">
                             <i class="fas fa-chart-bar mr-2"></i>レポート作成
+                        </button>
+                        <button onclick="showSection('codex-tools')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-md text-sm font-medium transition">
+                            <i class="fas fa-code mr-2"></i>Codex AI
                         </button>
                     </div>
                 </div>

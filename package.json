@@ -10,7 +10,8 @@
     "test": "npm run build && node --test"
   },
   "dependencies": {
-    "hono": "^4.9.2"
+    "hono": "^4.9.2",
+    "openai": "^4.24.1"
   },
   "devDependencies": {
     "@hono/vite-build": "^1.2.0",
