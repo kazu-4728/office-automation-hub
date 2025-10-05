@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "env": {
+        "MCP_LOG_LEVEL": "info"
+      }
+    },
+    "fetch": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-fetch"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/workspace/ez-manual/output"
+      ]
+    }
+  }
+}

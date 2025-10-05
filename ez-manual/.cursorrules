@@ -1,0 +1,136 @@
+# EZ Manual Simplifier - Cursor Rules
+
+## プロジェクト概要
+技術マニュアルを初心者向けに分かりやすく変換するWebアプリケーション
+
+## 技術スタック
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Zustand
+- **Backend**: Cloudflare Workers, Hono, D1 (SQLite), R2 (Storage)
+- **AI**: Gemini Pro/Flash/Imagen
+- **CI/CD**: GitHub Actions
+- **MCP**: Puppeteer, PDF Extractor, OCR Service
+
+## ファイル構成
+- `/frontend` - React フロントエンド
+- `/backend` - Cloudflare Workers バックエンド
+- `/agents` - AI エージェントスクリプト
+- `/shared` - 共通型定義
+- `/prompts` - プロンプトテンプレート（バージョン管理）
+- `/docs` - ドキュメント
+- `/.github/workflows` - GitHub Actions
+
+## コーディング規約
+
+### TypeScript
+- 厳密な型定義を使用（`strict: true`）
+- `any` の使用を避ける
+- 共通型は `/shared/types` に定義
+- エクスポートは named export を優先
+
+### React
+- 関数コンポーネントのみ使用
+- Hooks を積極的に活用
+- Props には明示的な型定義
+- コンポーネントは小さく、単一責任
+
+### Naming
+- ファイル名: `kebab-case.ts`
+- コンポーネント: `PascalCase.tsx`
+- 関数・変数: `camelCase`
+- 定数: `UPPER_SNAKE_CASE`
+- 型・インターフェース: `PascalCase`
+
+### Import順序
+1. React・外部ライブラリ
+2. 内部モジュール（`@/*`）
+3. 共通型（`@shared/*`）
+4. 相対パス
+5. CSS・スタイル
+
+### コミットメッセージ
+- `feat:` 新機能
+- `fix:` バグ修正
+- `docs:` ドキュメント
+- `refactor:` リファクタリング
+- `test:` テスト
+- `chore:` その他
+
+例: `feat: add URL input form component`
+
+## AI エージェント統合
+
+### 役割分担
+- **Claude (Cursor)**: プロジェクト管理、Issue作成、設計支援
+- **GitHub Copilot Agent**: オーケストレーション、タスク分配
+- **Gemini Pro**: コンテンツ変換・解析
+- **Gemini Flash**: 軽量処理
+- **Gemini Imagen**: 画像生成
+- **Gen Spark Pro**: デザイン・リサーチ（承認制）
+
+### ワークフロー
+1. ユーザー → Cursor Chat で指示
+2. Claude が Issue 作成
+3. GitHub Copilot Agent がタスク分解
+4. GitHub Actions が各エージェント実行
+5. 結果を D1/R2 に保存
+6. ユーザーに通知
+
+## UI/UX原則
+- シンプル・直感的
+- 3ステップで完結（入力→変換→出力）
+- レスポンシブデザイン
+- アクセシビリティ（WCAG 2.1 AA）
+- Tailwind CSS でスタイリング
+
+## セキュリティ
+- APIキーはクライアント側で管理（localStorage）
+- サーバーにAPIキーを保存しない
+- 入力検証（Zod）
+- XSS対策（DOMPurify）
+- レート制限
+
+## パフォーマンス
+- コード分割（React.lazy）
+- 画像最適化（sharp、squoosh）
+- キャッシング（R2 + D1）
+- 並列処理（GitHub Actions）
+
+## 再現性
+- コンテンツハッシュ（SHA-256）
+- プロンプトバージョン管理（Git）
+- パラメータ記録（D1 versions テーブル）
+- 決定的な動作を優先
+
+## テスト
+- ユニットテスト: Vitest
+- 統合テスト: Vitest
+- E2Eテスト: Playwright
+- カバレッジ目標: 80%以上
+
+## デプロイ
+- Frontend: Cloudflare Pages
+- Backend: Cloudflare Workers
+- Database: Cloudflare D1
+- Storage: Cloudflare R2
+
+## 開発フロー
+1. Issue作成（機能要求・バグ報告）
+2. ブランチ作成（`feature/*`, `fix/*`）
+3. 開発・テスト
+4. PR作成
+5. レビュー・マージ
+6. 自動デプロイ（main ブランチ）
+
+## 注意事項
+- Cursor 無料版を使用（Claude 未課金）
+- Gen Spark Pro は承認制で使用
+- GitHub Actions 無料枠を意識（月2,000分）
+- Cloudflare 無料枠を意識（Workers 100,000 req/day）
+- iPhone環境からの操作も想定
+
+## ドキュメント
+- `/docs/requirements.md` - 要件定義
+- `/docs/design-flow.md` - 設計フロー
+- `/docs/task-checklist.md` - タスクチェックリスト
+- `/docs/api-reference.md` - API仕様
+- `/docs/deployment-guide.md` - デプロイ手順
