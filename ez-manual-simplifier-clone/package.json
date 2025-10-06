@@ -1,0 +1,51 @@
+{
+  "name": "ez-manual-simplifier",
+  "version": "1.0.0",
+  "description": "技術マニュアル簡単化ツール - AI駆動、コスト最適化",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/dev-server.js",
+    "build": "node src/build.js",
+    "convert": "node src/cli.js convert",
+    "estimate": "node src/cli.js estimate",
+    "test": "node --test tests/",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "ai",
+    "documentation",
+    "simplification",
+    "claude",
+    "gemini",
+    "automation"
+  ],
+  "author": "AI Agent Team",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "puppeteer": "^21.0.0",
+    "mermaid": "^10.6.0",
+    "marked": "^9.1.0",
+    "commander": "^11.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/ez-manual-simplifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/ez-manual-simplifier/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/ez-manual-simplifier#readme"
+}
