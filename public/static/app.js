@@ -1,16 +1,201 @@
 // Office Automation Hub - Main JavaScript
+
+// ユーティリティ関数: デバウンス
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// ユーティリティ関数: スロットル
+function throttle(func, limit) {
+    let inThrottle;
+    return function executedFunction(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
 class OfficeAutomationHub {
     constructor() {
         this.currentSection = 'dashboard';
         this.apiBase = '/api';
+        this.eventHandlers = []; // イベントリスナーの追跡
+        this.chatState = {
+            messages: [],
+            lastUpdate: null
+        };
         this.init();
     }
 
     init() {
+        // 保存された状態を復元
+        this.restoreState();
         this.loadStats();
         this.initChart();
         this.setupEventListeners();
+        this.setupMobileOptimizations();
+        this.setupErrorHandling();
+        this.setupStatePersistence();
         this.showSection('dashboard');
+    }
+
+    // 状態の永続化（チャット復旧用）
+    setupStatePersistence() {
+        // ページが閉じられる前に状態を保存
+        const saveState = () => {
+            try {
+                const state = {
+                    currentSection: this.currentSection,
+                    chatState: this.chatState,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('appState', JSON.stringify(state));
+            } catch (e) {
+                console.warn('状態の保存に失敗しました:', e);
+            }
+        };
+
+        // beforeunloadイベントで保存
+        const beforeUnloadHandler = (e) => {
+            saveState();
+            // モバイルでは beforeunload が動作しない場合があるため、
+            // visibilitychange も使用
+        };
+        
+        this.addEventListener(window, 'beforeunload', beforeUnloadHandler);
+
+        // ページがバックグラウンドに移行する際にも保存
+        const visibilityChangeHandler = () => {
+            if (document.visibilityState === 'hidden') {
+                saveState();
+            } else if (document.visibilityState === 'visible') {
+                // 復元チェック（5分以内の状態のみ）
+                this.restoreState();
+            }
+        };
+        
+        this.addEventListener(document, 'visibilitychange', visibilityChangeHandler, { passive: true });
+
+        // 定期的な自動保存（30秒ごと）
+        setInterval(saveState, 30000);
+    }
+
+    restoreState() {
+        try {
+            const savedState = localStorage.getItem('appState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                // 5分以内の状態のみ復元
+                if (Date.now() - state.timestamp < 5 * 60 * 1000) {
+                    this.currentSection = state.currentSection || 'dashboard';
+                    if (state.chatState) {
+                        this.chatState = state.chatState;
+                    }
+                    console.log('状態を復元しました');
+                } else {
+                    // 古い状態は削除
+                    localStorage.removeItem('appState');
+                }
+            }
+        } catch (e) {
+            console.warn('状態の復元に失敗しました:', e);
+        }
+    }
+
+    // モバイル向け最適化
+    setupMobileOptimizations() {
+        // スクロールイベントの最適化（パッシブ + スロットル）
+        const handleScroll = throttle(() => {
+            // スクロール時の処理があればここに
+        }, 100);
+
+        this.addEventListener(window, 'scroll', handleScroll, { passive: true });
+
+        // リサイズイベントの最適化（デバウンス）
+        const handleResize = debounce(() => {
+            // リサイズ時の処理（チャートの再描画など）
+            if (this.chart) {
+                this.chart.resize();
+            }
+        }, 250);
+
+        this.addEventListener(window, 'resize', handleResize, { passive: true });
+
+        // タッチイベントの最適化（誤タップ防止）
+        let touchStartTime = 0;
+        const touchStartHandler = (e) => {
+            touchStartTime = Date.now();
+        };
+
+        const touchEndHandler = (e) => {
+            const touchDuration = Date.now() - touchStartTime;
+            // 300ms未満のタッチは誤タップの可能性がある
+            if (touchDuration < 300) {
+                // 必要に応じて処理をスキップ
+            }
+        };
+
+        document.addEventListener('touchstart', touchStartHandler, { passive: true });
+        document.addEventListener('touchend', touchEndHandler, { passive: true });
+    }
+
+    // グローバルエラーハンドリング
+    setupErrorHandling() {
+        // 未処理のエラーをキャッチ
+        const errorHandler = (event) => {
+            console.error('未処理のエラー:', event.error);
+            // チャットがクラッシュしないように、エラーをログに記録するだけ
+            // 必要に応じてエラー通知を表示
+            try {
+                if (typeof this.showNotification === 'function') {
+                    this.showNotification('エラーが発生しましたが、作業は継続できます', 'error');
+                }
+            } catch (e) {
+                // エラー通知自体が失敗した場合は何もしない
+                console.warn('エラー通知の表示に失敗:', e);
+            }
+            // 状態を保存して復旧可能にする（直接saveStateを呼び出し）
+            try {
+                const state = {
+                    currentSection: this.currentSection,
+                    chatState: this.chatState,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('appState', JSON.stringify(state));
+            } catch (e) {
+                console.warn('エラー時の状態保存に失敗:', e);
+            }
+        };
+
+        this.addEventListener(window, 'error', errorHandler);
+        this.addEventListener(window, 'unhandledrejection', (event) => {
+            console.error('未処理のPromise拒否:', event.reason);
+            errorHandler({ error: event.reason });
+        });
+    }
+
+    // イベントリスナーの追加（追跡付き）
+    addEventListener(element, event, handler, options = {}) {
+        element.addEventListener(event, handler, options);
+        this.eventHandlers.push({ element, event, handler, options });
+    }
+
+    // すべてのイベントリスナーをクリーンアップ
+    cleanup() {
+        this.eventHandlers.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        this.eventHandlers = [];
     }
 
     // Navigation
@@ -41,18 +226,48 @@ class OfficeAutomationHub {
         this.currentSection = sectionId;
     }
 
-    // Load dashboard statistics
-    async loadStats() {
+    // Load dashboard statistics（自動再接続機能付き）
+    async loadStats(retryCount = 0) {
         try {
-            const response = await fetch(`${this.apiBase}/stats`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
+
+            const response = await fetch(`${this.apiBase}/stats`, {
+                signal: controller.signal,
+                // モバイルでの接続品質を考慮
+                cache: 'no-cache'
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const stats = await response.json();
 
-            document.getElementById('csv-processed-count').textContent = stats.csvProcessed;
-            document.getElementById('email-sent-count').textContent = stats.emailsSent;
-            document.getElementById('files-organized-count').textContent = stats.filesOrganized;
-            document.getElementById('reports-generated-count').textContent = stats.reportsGenerated;
+            // DOM要素の存在確認
+            const csvCountEl = document.getElementById('csv-processed-count');
+            const emailCountEl = document.getElementById('email-sent-count');
+            const filesCountEl = document.getElementById('files-organized-count');
+            const reportsCountEl = document.getElementById('reports-generated-count');
+
+            if (csvCountEl) csvCountEl.textContent = stats.csvProcessed || 0;
+            if (emailCountEl) emailCountEl.textContent = stats.emailsSent || 0;
+            if (filesCountEl) filesCountEl.textContent = stats.filesOrganized || 0;
+            if (reportsCountEl) reportsCountEl.textContent = stats.reportsGenerated || 0;
+
+            // 成功したらリトライカウントをリセット
+            retryCount = 0;
         } catch (error) {
             console.error('統計データの読み込みに失敗しました:', error);
+            
+            // ネットワークエラーの場合、自動リトライ（最大3回）
+            if (retryCount < 3 && (error.name === 'TypeError' || error.name === 'AbortError')) {
+                setTimeout(() => {
+                    this.loadStats(retryCount + 1);
+                }, Math.pow(2, retryCount) * 1000); // 指数バックオフ: 1秒, 2秒, 4秒
+            }
         }
     }
 
@@ -61,7 +276,7 @@ class OfficeAutomationHub {
         const ctx = document.getElementById('activityChart');
         if (!ctx) return;
 
-        const chart = new Chart(ctx, {
+        this.chart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['月', '火', '水', '木', '金', '土', '日'],
@@ -104,33 +319,36 @@ class OfficeAutomationHub {
 
     // Event listeners setup
     setupEventListeners() {
-        // Navigation links
+        // Navigation links（パッシブオプションは不要、クリックイベントなので）
         document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
+            const clickHandler = (e) => {
                 e.preventDefault();
                 const sectionId = link.getAttribute('href').substring(1);
                 this.showSection(sectionId);
-            });
+            };
+            this.addEventListener(link, 'click', clickHandler);
         });
 
         // CSV file input
         const csvFileInput = document.getElementById('csv-file-input');
         if (csvFileInput) {
-            csvFileInput.addEventListener('change', (e) => {
+            const changeHandler = (e) => {
                 if (e.target.files.length > 0) {
                     this.previewCsvFile(e.target.files[0]);
                 }
-            });
+            };
+            this.addEventListener(csvFileInput, 'change', changeHandler);
         }
 
         // Recipients file input
         const recipientsFileInput = document.getElementById('recipients-file-input');
         if (recipientsFileInput) {
-            recipientsFileInput.addEventListener('change', (e) => {
+            const changeHandler = (e) => {
                 if (e.target.files.length > 0) {
                     this.previewRecipientsFile(e.target.files[0]);
                 }
-            });
+            };
+            this.addEventListener(recipientsFileInput, 'change', changeHandler);
         }
     }
 
@@ -513,5 +731,18 @@ function generateReport() {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    automationHub = new OfficeAutomationHub();
+    try {
+        automationHub = new OfficeAutomationHub();
+    } catch (error) {
+        console.error('初期化エラー:', error);
+        // エラーが発生しても基本的な機能は動作するように
+        // 必要に応じて最小限の初期化を行う
+    }
+});
+
+// ページアンロード時にクリーンアップ
+window.addEventListener('beforeunload', () => {
+    if (automationHub && typeof automationHub.cleanup === 'function') {
+        automationHub.cleanup();
+    }
 });
